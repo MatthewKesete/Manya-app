@@ -1,11 +1,11 @@
 const { Pool } = require('pg');
 
 const pool = new Pool({
-    host: 'localhost',
-    port: 5432,
-    database: 'manya_db',
-    user: 'postgres',
-    password: 'root',
+    host: process.env.DB_HOST || 'localhost',
+    port: process.env.DB_PORT || 5432,
+    database: process.env.DB_NAME || 'manya_db',
+    user: process.env.DB_USER || 'postgres',
+    password: process.env.DB_PASSWORD || 'root',
     max: 20,
     idleTimeoutMillis: 30000,
     connectionTimeoutMillis: 2000,
