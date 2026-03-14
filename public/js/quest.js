@@ -1,4 +1,6 @@
-// quest.js - Complete Version with Simulation Support
+// quest.js - Complete Fixed Version with Debug
+console.log('✅✅✅ QUEST.JS LOADING - FULL VERSION ✅✅✅');
+
 const QuestScreen = {
     questData: null,
     challenge: null,
@@ -39,8 +41,18 @@ const QuestScreen = {
     
     init(questData, challenge, onComplete) {
         console.log('🎮 Initializing quest:', questData);
+        console.log('   Challenge:', challenge);
         
-        // Use 'this' not QuestScreen
+        // Check if template exists FIRST
+        const template = document.getElementById('gameplay-view');
+        if (!template) {
+            console.error('❌ CRITICAL: gameplay-view template missing from HTML!');
+            alert('System error: Game template missing. Please refresh.');
+            return;
+        }
+        console.log('✅ Template found');
+        
+        // Store data
         this.questData = questData;
         this.challenge = challenge;
         this.questions = questData.questions || [];
@@ -67,10 +79,12 @@ const QuestScreen = {
         // Initialize game mode
         if (questData.gameMode && questData.gameMode !== 'none') {
             if (window.GameModes) {
+                console.log('🎮 Initializing game mode:', questData.gameMode);
                 window.GameModes.init(
                     questData.gameMode,
                     questData.gameMode === 'timed' ? 30 : null,
-                    () => this.handleTimeUp()
+                    () => this.handleTimeUp(),
+                    questData.questId
                 );
             }
         }
@@ -80,60 +94,93 @@ const QuestScreen = {
     },
     
     render() {
-        const template = document.getElementById('gameplay-view').content.cloneNode(true);
-        const self = this; // Capture 'this' for nested functions
+        console.log('🎨 Rendering gameplay view...');
         
-        // Set quest info
-        const questNameEl = template.querySelector('.current-quest-name');
-        if (questNameEl) questNameEl.textContent = this.questData.name;
-        
-        const counterEl = template.querySelector('.question-counter');
-        if (counterEl) counterEl.textContent = `0/${this.questions.length}`;
-        
-        // Back button
-        const backBtn = template.querySelector('.back-btn');
-        if (backBtn) {
-            backBtn.addEventListener('click', () => {
-                if (confirm('Exit quest? Your progress will not be saved.')) {
-                    self.exit(); // Use self, not QuestScreen
-                }
-            });
-        }
-        
-        // Hint button
-        const hintBtn = template.querySelector('.hint-btn');
-        if (hintBtn) {
-            hintBtn.addEventListener('click', () => self.getHint()); // Use self
-        }
-        
-        // Submit button
-        const submitBtn = template.querySelector('.submit-btn');
-        if (submitBtn) {
-            submitBtn.addEventListener('click', () => self.submitAnswer()); // Use self
-        }
-        
-        // Update content area
-        const contentArea = document.getElementById('content-area');
-        if (!contentArea) {
-            console.error('❌ Content area not found!');
-            return;
-        }
-        
-        contentArea.innerHTML = '';
-        contentArea.appendChild(template);
-        
-        // Store references after they're in the DOM
-        setTimeout(() => {
-            self.hintBtn = document.getElementById('hintBtn');
-            self.submitBtn = document.getElementById('submitBtn');
-            self.hintDisplay = document.getElementById('hintDisplay');
+        try {
+            const template = document.getElementById('gameplay-view');
+            if (!template) {
+                console.error('❌ Template not found in render');
+                return;
+            }
             
-            console.log('✅ DOM elements referenced:', {
-                hintBtn: !!self.hintBtn,
-                submitBtn: !!self.submitBtn,
-                hintDisplay: !!self.hintDisplay
-            });
-        }, 100);
+            const templateContent = template.content.cloneNode(true);
+            console.log('✅ Template cloned');
+            
+            const self = this;
+            
+            // Check all required elements
+            const questNameEl = templateContent.querySelector('.current-quest-name');
+            console.log('   .current-quest-name found?', !!questNameEl);
+            
+            const counterEl = templateContent.querySelector('.question-counter');
+            console.log('   .question-counter found?', !!counterEl);
+            
+            const backBtn = templateContent.querySelector('.back-btn');
+            console.log('   .back-btn found?', !!backBtn);
+            
+            const hintBtn = templateContent.querySelector('.hint-btn');
+            console.log('   .hint-btn found?', !!hintBtn);
+            
+            const submitBtn = templateContent.querySelector('.submit-btn');
+            console.log('   .submit-btn found?', !!submitBtn);
+            
+            const timerDisplay = templateContent.querySelector('.timer-display');
+            console.log('   .timer-display found?', !!timerDisplay);
+            
+            const hintDisplay = templateContent.querySelector('.hint-display');
+            console.log('   .hint-display found?', !!hintDisplay);
+            
+            // Set quest info
+            if (questNameEl) questNameEl.textContent = this.questData.name || 'Quest';
+            if (counterEl) counterEl.textContent = `0/${this.questions.length}`;
+            
+            // Back button
+            if (backBtn) {
+                backBtn.addEventListener('click', () => {
+                    if (confirm('Exit quest? Your progress will not be saved.')) {
+                        self.exit();
+                    }
+                });
+            }
+            
+            // Hint button
+            if (hintBtn) {
+                hintBtn.addEventListener('click', () => self.getHint());
+            }
+            
+            // Submit button
+            if (submitBtn) {
+                submitBtn.addEventListener('click', () => self.submitAnswer());
+            }
+            
+            // Update content area
+            const contentArea = document.getElementById('content-area');
+            if (!contentArea) {
+                console.error('❌ Content area not found!');
+                return;
+            }
+            
+            contentArea.innerHTML = '';
+            contentArea.appendChild(templateContent);
+            console.log('✅ Template added to DOM');
+            
+            // Store references after they're in the DOM
+            setTimeout(() => {
+                self.hintBtn = document.getElementById('hintBtn');
+                self.submitBtn = document.getElementById('submitBtn');
+                self.hintDisplay = document.getElementById('hintDisplay');
+                
+                console.log('✅ DOM elements referenced:', {
+                    hintBtn: !!self.hintBtn,
+                    submitBtn: !!self.submitBtn,
+                    hintDisplay: !!self.hintDisplay
+                });
+            }, 100);
+            
+        } catch (err) {
+            console.error('❌ Error in render:', err);
+            alert('Error rendering quest. Check console.');
+        }
     },
     
     async loadPsychologicalParams() {
@@ -152,9 +199,8 @@ const QuestScreen = {
     
     startHesitationTracking() {
         this.questionStartTime = Date.now();
-        const self = this; // Capture for interval
+        const self = this;
         
-        // Track hesitation (no activity for 5 seconds)
         if (this.hesitationTimer) {
             clearInterval(this.hesitationTimer);
         }
@@ -165,13 +211,9 @@ const QuestScreen = {
             if (timeOnQuestion > 5 && !self.answerSubmitted && !self.selectedOption) {
                 self.hesitationCount++;
                 self.params.hesitationRate = (self.hesitationCount / (self.currentQuestionIndex + 1)) * 100;
-                
                 self.updateParameterDisplays();
-                
-                // Update frustration based on hesitation
                 self.params.frustration = Math.min(100, self.params.frustration + 2);
                 
-                // Show subtle reminder
                 if (timeOnQuestion > 10 && timeOnQuestion % 5 === 0) {
                     self.showTemporaryMessage('Still thinking? Take your time!');
                 }
@@ -200,7 +242,7 @@ const QuestScreen = {
         setTimeout(() => msgDiv.remove(), 2000);
     },
     
-    async loadQuestion(index) {
+    loadQuestion(index) {
         if (index >= this.questions.length) {
             this.completeQuest();
             return;
@@ -211,18 +253,18 @@ const QuestScreen = {
         
         console.log(`📝 Loading question ${index + 1}:`, question.id);
         
-        // Check if this is a simulation
+        // Check if simulation
         if (question.question_type === 'SIM') {
-            await this.loadSimulationQuestion(question);
+            this.loadSimulationQuestion(question);
             return;
         }
         
-        // Clear hesitation timer for previous question
+        // Clear hesitation timer
         if (this.hesitationTimer) {
             clearInterval(this.hesitationTimer);
         }
         
-        // Reset selection state
+        // Reset state
         this.selectedOption = null;
         this.answerSubmitted = false;
         this.hintUsed = false;
@@ -230,19 +272,16 @@ const QuestScreen = {
         this.answerChanged = false;
         this.changeCount = 0;
         
-        // Update counter
+        // Update UI
         const counterEl = document.querySelector('.question-counter');
         if (counterEl) counterEl.textContent = `${index + 1}/${this.questions.length}`;
         
-        // Set question text
         const questionTextEl = document.querySelector('.question-text');
-        if (questionTextEl) questionTextEl.textContent = question.text;
+        if (questionTextEl) questionTextEl.textContent = question.text || 'Question text missing';
         
-        // Set topic badge
         const topicBadgeEl = document.querySelector('.topic-badge');
-        if (topicBadgeEl) topicBadgeEl.textContent = this.challenge.name;
+        if (topicBadgeEl) topicBadgeEl.textContent = this.challenge?.name || 'Topic';
         
-        // Set difficulty badge
         const difficultyEl = document.querySelector('.difficulty-badge');
         if (difficultyEl) {
             const difficulty = question.difficulty || 'M';
@@ -264,21 +303,24 @@ const QuestScreen = {
         if (this.hintBtn) this.hintBtn.disabled = false;
         if (this.submitBtn) this.submitBtn.disabled = true;
         
-        // Reset question timer
+        // Reset timer
         this.questionStartTime = Date.now();
         this.startHesitationTracking();
     },
     
     renderOptions(question) {
         const optionsContainer = document.getElementById('options-container');
-        if (!optionsContainer) return;
+        if (!optionsContainer) {
+            console.error('❌ options-container not found');
+            return;
+        }
         
         optionsContainer.innerHTML = '';
-        const self = this; // Capture for event listeners
+        const self = this;
         
         const letters = ['A', 'B', 'C', 'D'];
         letters.forEach(letter => {
-            const optionText = question.options[letter];
+            const optionText = question.options?.[letter];
             if (!optionText) return;
             
             const optionDiv = document.createElement('div');
@@ -297,20 +339,14 @@ const QuestScreen = {
         
         console.log(`🔘 Selected option: ${letter}`);
         
-        // Track answer changes (HESITATION!)
         if (this.selectedOption && this.selectedOption !== letter) {
             this.answerChanged = true;
             this.changeCount++;
             console.log(`🔄 Answer changed! (${this.changeCount} changes)`);
         }
         
-        // Remove selected class from all options
         document.querySelectorAll('.option').forEach(opt => {
             opt.classList.remove('selected');
-        });
-        
-        // Add selected class to chosen option
-        document.querySelectorAll('.option').forEach(opt => {
             if (opt.dataset.letter === letter) {
                 opt.classList.add('selected');
             }
@@ -319,7 +355,6 @@ const QuestScreen = {
         this.selectedOption = letter;
         if (this.submitBtn) this.submitBtn.disabled = false;
         
-        // If they selected quickly, boost confidence
         const responseTime = (Date.now() - this.questionStartTime) / 1000;
         if (responseTime < 3) {
             this.params.confidence = Math.min(100, this.params.confidence + 1);
@@ -328,14 +363,10 @@ const QuestScreen = {
     },
     
     async submitAnswer() {
-        if (!this.selectedOption || this.answerSubmitted) {
-            console.log('❌ Cannot submit: no option selected or already submitted');
-            return;
-        }
+        if (!this.selectedOption || this.answerSubmitted) return;
         
         console.log(`📤 Submitting answer: ${this.selectedOption}`);
         
-        // Stop hesitation tracking
         if (this.hesitationTimer) {
             clearInterval(this.hesitationTimer);
         }
@@ -344,21 +375,17 @@ const QuestScreen = {
         if (this.submitBtn) this.submitBtn.disabled = true;
         if (this.hintBtn) this.hintBtn.disabled = true;
         
-        // Disable all options
         document.querySelectorAll('.option').forEach(opt => {
             opt.style.pointerEvents = 'none';
         });
         
-        // Calculate response time
         const responseTime = (Date.now() - this.questionStartTime) / 1000;
-        
         const question = this.questions[this.currentQuestionIndex];
         const correctAnswer = this.extractCorrectLetter(question.correctAnswer);
         const isCorrect = this.selectedOption === correctAnswer;
         
-        console.log(`✅ Correct answer: ${correctAnswer}, User was ${isCorrect ? 'right' : 'wrong'}`);
+        console.log(`✅ Correct: ${correctAnswer}, User was ${isCorrect ? 'right' : 'wrong'}`);
         
-        // Update psychological parameters
         if (!isCorrect) {
             this.params.frustration = Math.min(100, this.params.frustration + 15);
             this.params.confidence = Math.max(0, this.params.confidence - 10);
@@ -367,7 +394,6 @@ const QuestScreen = {
             this.params.confidence = Math.min(100, this.params.confidence + 5);
         }
         
-        // Show correct/incorrect highlighting
         document.querySelectorAll('.option').forEach(opt => {
             if (opt.dataset.letter === correctAnswer) {
                 opt.classList.add('correct');
@@ -376,20 +402,15 @@ const QuestScreen = {
             }
         });
         
-        // Update parameters display
         this.updateParameterDisplays();
-        
-        // Show detailed feedback
         await this.showDetailedFeedback(this.selectedOption, correctAnswer, isCorrect, question, responseTime);
     },
     
     async showDetailedFeedback(selected, correct, isCorrect, question, responseTime) {
-        // Create feedback modal
         const feedbackModal = document.createElement('div');
         feedbackModal.className = 'feedback-card-detailed';
-        const self = this; // Capture for continue button
+        const self = this;
         
-        // Get detailed solution
         let detailedSolution = "Loading explanation...";
         try {
             const response = await fetch(`/api/solution/${question.id}`);
@@ -443,13 +464,11 @@ const QuestScreen = {
         
         document.body.appendChild(feedbackModal);
         
-        // Add continue button handler
         document.getElementById('continue-feedback-btn').addEventListener('click', () => {
             feedbackModal.remove();
             self.continueAfterFeedback();
         });
         
-        // Track answer
         this.answers.push({
             questionId: question.id,
             selectedAnswer: selected,
@@ -464,7 +483,6 @@ const QuestScreen = {
             frustrationAtAnswer: this.params.frustration
         });
         
-        // Update points display
         const pointsSpan = document.querySelector('.points-earned');
         if (pointsSpan) {
             const pointsEarned = isCorrect ? (this.hintUsed ? 2 : 3) : 0;
@@ -472,39 +490,31 @@ const QuestScreen = {
             pointsSpan.textContent = `⭐ ${currentPoints + pointsEarned}`;
         }
         
-        // Update accuracy
         const correctSoFar = this.answers.filter(a => a.isCorrect).length;
         this.params.accuracy = (correctSoFar / this.answers.length) * 100;
         
-        // Update hint usage rate
         const hintsUsed = this.answers.filter(a => a.hintUsed).length;
         this.params.hintUsage = (hintsUsed / this.answers.length) * 100;
         
-        // Update mastery
         this.params.mastery = Math.min(100, 
             this.params.accuracy - (hintsUsed / this.answers.length) * 15
         );
         
         this.updateParameterDisplays();
         
-        // Game mode specific feedback
         if (window.GameModes) window.GameModes.questionAnswered();
     },
     
     getOptionText(question, letter) {
-        return question.options[letter] || '';
+        return question.options?.[letter] || '';
     },
     
     continueAfterFeedback() {
-        // Move to next question
         this.loadQuestion(this.currentQuestionIndex + 1);
     },
     
     async getHint() {
-        if (this.hintUsed || this.answerSubmitted) {
-            console.log('❌ Cannot get hint: already used or answer submitted');
-            return;
-        }
+        if (this.hintUsed || this.answerSubmitted) return;
         
         const question = this.questions[this.currentQuestionIndex];
         console.log(`💡 Getting hint for question: ${question.id}`);
@@ -512,8 +522,6 @@ const QuestScreen = {
         try {
             const response = await fetch(`/api/hint/${question.id}`);
             const data = await response.json();
-            
-            console.log('✅ Hint received:', data);
             
             if (this.hintDisplay) {
                 this.hintDisplay.textContent = data.hint || "Think carefully about what you've learned!";
@@ -523,7 +531,6 @@ const QuestScreen = {
             this.hintUsed = true;
             if (this.hintBtn) this.hintBtn.disabled = true;
             
-            // Update parameters - hint usage affects confidence
             this.params.confidence = Math.max(0, this.params.confidence - 5);
             this.params.hintUsage = ((this.answers.filter(a => a.hintUsed).length + 1) / (this.answers.length + 1)) * 100;
             this.updateParameterDisplays();
@@ -535,11 +542,9 @@ const QuestScreen = {
     },
     
     updateParameterDisplays() {
-        // Update accuracy
         const accuracyEl = document.getElementById('param-accuracy');
         if (accuracyEl) accuracyEl.textContent = Math.round(this.params.accuracy) + '%';
         
-        // Update mastery
         const masteryEl = document.getElementById('param-mastery');
         if (masteryEl) masteryEl.textContent = Math.round(this.params.mastery) + '%';
         
@@ -551,21 +556,18 @@ const QuestScreen = {
         const masteryLevelEl = document.getElementById('mastery-level');
         if (masteryLevelEl) masteryLevelEl.textContent = masteryLevel;
         
-        // Update confidence
         const confidenceEl = document.getElementById('param-confidence');
         if (confidenceEl) confidenceEl.textContent = Math.round(this.params.confidence) + '%';
         
         const confidenceBar = document.getElementById('confidence-bar');
         if (confidenceBar) confidenceBar.style.width = this.params.confidence + '%';
         
-        // Update frustration
         const frustrationEl = document.getElementById('param-frustration');
         if (frustrationEl) frustrationEl.textContent = Math.round(this.params.frustration) + '%';
         
         const frustrationBar = document.getElementById('frustration-bar');
         if (frustrationBar) frustrationBar.style.width = this.params.frustration + '%';
         
-        // Update hint usage
         const hintsEl = document.getElementById('param-hints');
         if (hintsEl) hintsEl.textContent = Math.round(this.params.hintUsage) + '%';
         
@@ -573,10 +575,8 @@ const QuestScreen = {
         const hintCountEl = document.getElementById('hint-count');
         if (hintCountEl) hintCountEl.textContent = `${hintCount} used`;
         
-        // Update hesitation - NOW WITH ANSWER CHANGES!
         const hesitationEl = document.getElementById('param-hesitation');
         if (hesitationEl) {
-            // Calculate hesitation score based on answer changes and time
             let hesitationScore = 0;
             if (this.answerChanged) hesitationScore += 40;
             if (this.changeCount >= 2) hesitationScore += 20;
@@ -612,7 +612,7 @@ const QuestScreen = {
         if (factorsContainer) {
             factorsContainer.innerHTML = '';
             
-            if (metadata.factors && metadata.factors.length) {
+            if (metadata.factors?.length) {
                 metadata.factors.forEach(factor => {
                     const tag = document.createElement('span');
                     tag.className = 'factor-tag';
@@ -626,43 +626,68 @@ const QuestScreen = {
     handleTimeUp() {
         if (this.answerSubmitted) return;
         
-        const question = this.questions[this.currentQuestionIndex];
+        console.log('⏰ TIME\'S UP! Quest ending...');
+        this.showTimeUpNotification();
         
-        this.answers.push({
-            questionId: question.id,
-            selectedAnswer: null,
-            correctAnswer: this.extractCorrectLetter(question.correctAnswer),
-            isCorrect: false,
-            timeSpent: (Date.now() - this.questionStartTime),
-            hintUsed: false,
-            answerChanged: this.answerChanged,
-            changeCount: this.changeCount,
-            hesitationCount: this.hesitationCount,
-            confidenceAtAnswer: this.params.confidence,
-            frustrationAtAnswer: this.params.frustration
-        });
+        // Mark remaining questions as wrong
+        for (let i = this.currentQuestionIndex; i < this.questions.length; i++) {
+            const question = this.questions[i];
+            this.answers.push({
+                questionId: question.id,
+                selectedAnswer: null,
+                correctAnswer: this.extractCorrectLetter(question.correctAnswer),
+                isCorrect: false,
+                timeSpent: 0,
+                hintUsed: false,
+                answerChanged: false,
+                changeCount: 0,
+                hesitationCount: 0,
+                timedOut: true
+            });
+        }
         
-        // Show timeout feedback
-        alert('Time\'s up! Moving to next question.');
-        this.loadQuestion(this.currentQuestionIndex + 1);
+        setTimeout(() => {
+            this.completeQuest();
+        }, 2000);
+    },
+    
+    showTimeUpNotification() {
+        const existing = document.querySelector('.time-up-notification');
+        if (existing) existing.remove();
+        
+        const notification = document.createElement('div');
+        notification.className = 'time-up-notification';
+        notification.innerHTML = `
+            <div class="time-up-content">
+                <span class="time-icon">⏰</span>
+                <div class="time-message">TIME'S UP!</div>
+                <div class="time-details">${this.answers.filter(a => a.isCorrect).length}/${this.questions.length} correct</div>
+            </div>
+        `;
+        
+        document.body.appendChild(notification);
+        
+        setTimeout(() => {
+            notification.classList.add('fade-out');
+            setTimeout(() => notification.remove(), 500);
+        }, 2000);
     },
     
     async completeQuest() {
         console.log('🏁 Completing quest...');
         
-        // Calculate final mastery
         const totalQuestions = this.questions.length;
         const correctAnswers = this.answers.filter(a => a.isCorrect).length;
+        const timedOut = this.answers.filter(a => a.timedOut).length;
         const hintsUsed = this.answers.filter(a => a.hintUsed).length;
         
         let mastery = (correctAnswers / totalQuestions) * 100;
         mastery -= (hintsUsed / totalQuestions) * 15;
+        mastery -= (timedOut / totalQuestions) * 25;
         
-        if (this.questData.gameMode === 'quickfire') mastery += 5;
-        
+        if (this.questData?.gameMode === 'quickfire') mastery += 5;
         mastery = Math.min(100, Math.max(0, Math.round(mastery)));
         
-        // Send to server
         try {
             const response = await fetch('/api/quests/complete', {
                 method: 'POST',
@@ -670,7 +695,7 @@ const QuestScreen = {
                 body: JSON.stringify({
                     userId: window.App?.currentUser || 'student-001',
                     challengeId: this.challenge.id,
-                    questId: this.questData.questId,
+                    questId: this.questData?.questId,
                     mastery: mastery,
                     answers: this.answers,
                     finalParams: {
@@ -685,8 +710,6 @@ const QuestScreen = {
             });
             
             const result = await response.json();
-            
-            // Show completion screen
             this.showCompletion(mastery, result.nextUnlocked);
             
         } catch (err) {
@@ -699,7 +722,7 @@ const QuestScreen = {
     showCompletion(mastery, nextUnlocked) {
         const overlay = document.querySelector('.quest-complete-overlay');
         if (!overlay) return;
-        const self = this; // Capture for continue button
+        const self = this;
         
         overlay.querySelector('.mastery-score').textContent = mastery + '%';
         overlay.querySelector('.earned-rewards').innerHTML = `
@@ -718,7 +741,6 @@ const QuestScreen = {
         
         overlay.style.display = 'flex';
         
-        // Reset game mode
         if (window.GameModes) window.GameModes.reset();
     },
     
@@ -742,17 +764,15 @@ const QuestScreen = {
     // ============= SIMULATION METHODS =============
     
     async loadSimulationQuestion(question) {
-        // Show loading indicator
+        console.log('🎮 Loading simulation question:', question.id);
         this.showLoading('Loading 3D simulation...');
         
         try {
-            // Initialize simulation loader if needed
             if (!window.SimulationLoader) {
                 await this.loadScript('js/simulation-loader.js');
                 await SimulationLoader.init();
             }
             
-            // Hide standard MCQ elements
             const optionsContainer = document.getElementById('options-container');
             if (optionsContainer) optionsContainer.style.display = 'none';
             
@@ -762,33 +782,31 @@ const QuestScreen = {
             const hintBtn = document.querySelector('.hint-btn');
             if (hintBtn) hintBtn.style.display = 'none';
             
-            // Create container for simulation
             const simContainer = document.createElement('div');
             simContainer.id = 'simulation-container';
             simContainer.style.width = '100%';
             simContainer.style.minHeight = '500px';
             simContainer.style.marginTop = '20px';
             
-            // Insert after question text
             const questionText = document.querySelector('.question-text');
-            questionText.parentNode.insertBefore(simContainer, questionText.nextSibling);
+            if (questionText) {
+                questionText.parentNode.insertBefore(simContainer, questionText.nextSibling);
+            }
             
-            // Load simulation
             const simElement = await SimulationLoader.loadSimulation(question);
             simContainer.appendChild(simElement);
             
-            // Add done button
             this.setupSimulationControls(question);
             
-            // Update counter
             const counterEl = document.querySelector('.question-counter');
-            if (counterEl) counterEl.textContent = `${this.currentQuestionIndex + 1}/${this.questions.length}`;
+            if (counterEl) {
+                counterEl.textContent = `${this.currentQuestionIndex + 1}/${this.questions.length}`;
+            }
             
         } catch (err) {
             console.error('Error loading simulation:', err);
             this.showTemporaryMessage('Failed to load simulation. Using regular question instead.');
             
-            // Restore MCQ elements
             const optionsContainer = document.getElementById('options-container');
             if (optionsContainer) optionsContainer.style.display = 'grid';
             
@@ -798,7 +816,6 @@ const QuestScreen = {
             const hintBtn = document.querySelector('.hint-btn');
             if (hintBtn) hintBtn.style.display = 'block';
             
-            // Fall back to regular MCQ
             this.loadRegularQuestion(question);
         } finally {
             this.hideLoading();
@@ -806,18 +823,14 @@ const QuestScreen = {
     },
     
     loadRegularQuestion(question) {
-        // Your existing question loading logic for MCQs
         this.renderOptions(question);
         
-        // Update counter
         const counterEl = document.querySelector('.question-counter');
         if (counterEl) counterEl.textContent = `${this.currentQuestionIndex + 1}/${this.questions.length}`;
         
-        // Set question text
         const questionTextEl = document.querySelector('.question-text');
         if (questionTextEl) questionTextEl.textContent = question.text;
         
-        // Enable submit button
         if (this.submitBtn) this.submitBtn.disabled = true;
         if (this.hintBtn) this.hintBtn.disabled = false;
     },
@@ -833,13 +846,11 @@ const QuestScreen = {
     },
     
     setupSimulationControls(question) {
-        // Remove any existing done button
         const existingBtn = document.getElementById('simulation-done-btn');
         if (existingBtn) existingBtn.remove();
         
-        // Add "Done" button for simulations
         const footer = document.querySelector('.gameplay-footer');
-        const self = this;
+        if (!footer) return;
         
         const doneBtn = document.createElement('button');
         doneBtn.id = 'simulation-done-btn';
@@ -851,15 +862,12 @@ const QuestScreen = {
         doneBtn.style.width = '200px';
         
         doneBtn.onclick = () => {
-            // Track that they viewed the simulation
             this.answers.push({
                 questionId: question.id,
                 type: 'simulation',
                 mode: question.mode_sim,
                 timeSpent: (Date.now() - this.questionStartTime) / 1000
             });
-            
-            // Move to next question
             this.loadQuestion(this.currentQuestionIndex + 1);
         };
         
@@ -897,6 +905,5 @@ const QuestScreen = {
     }
 };
 
-// Make sure QuestScreen is globally available - THIS MUST BE AT THE END!
 window.QuestScreen = QuestScreen;
 console.log('✅ QuestScreen registered globally');

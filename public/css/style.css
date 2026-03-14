@@ -1128,4 +1128,126 @@ body {
     color: #f56565;
     font-size: 1.1em;
 }
+/* Game Mode Notifications */
+.mode-notification {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 20px 30px;
+    border-radius: 15px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+    z-index: 3000;
+    animation: slideDown 0.5s ease;
+    max-width: 500px;
+    text-align: center;
+}
+
+.mode-notification-content {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.mode-icon {
+    font-size: 2.5em;
+}
+
+.mode-message {
+    font-size: 1.1em;
+    font-weight: 600;
+}
+
+.mode-notification.fade-out {
+    animation: fadeOut 0.5s ease forwards;
+}
+
+.time-up-notification {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: #f56565;
+    color: white;
+    padding: 40px;
+    border-radius: 20px;
+    box-shadow: 0 20px 60px rgba(245, 101, 101, 0.4);
+    z-index: 4000;
+    animation: pulse 1s ease;
+    text-align: center;
+}
+
+.time-up-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+}
+
+.time-icon {
+    font-size: 4em;
+}
+
+.time-message {
+    font-size: 2em;
+    font-weight: bold;
+}
+
+.timer-display {
+    font-size: 1.5em;
+    font-weight: 600;
+    color: #f56565;
+    padding: 10px 20px;
+    background: #fff5f5;
+    border-radius: 10px;
+    transition: all 0.3s;
+}
+
+.timer-display.timer-warning {
+    background: #fed7d7;
+    color: #c53030;
+    animation: pulse 1s infinite;
+}
+
+.timer-display.timer-critical {
+    background: #fc8181;
+    color: white;
+    animation: pulse 0.5s infinite;
+}
+
+.timer-progress {
+    height: 4px;
+    background: #48bb78;
+    border-radius: 2px;
+    transition: width 1s linear;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translate(-50%, -20px);
+    }
+    to {
+        opacity: 1;
+        transform: translate(-50%, 0);
+    }
+}
+
+@keyframes pulse {
+    0%, 100% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.05);
+    }
+}
+
+@keyframes fadeOut {
+    to {
+        opacity: 0;
+        transform: translate(-50%, -20px);
+    }
+}
 </style>

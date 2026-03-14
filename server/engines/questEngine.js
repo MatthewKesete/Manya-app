@@ -1,6 +1,7 @@
 // server/engines/questEngine.js
 const challengeLoader = require('../config/challengeLoader');
 const pool = require('../config/database');
+const path = require('path');
 
 class QuestEngine {
     constructor() {
@@ -19,13 +20,13 @@ class QuestEngine {
     }
     
     async generateQuest(topicName, subtopicId, questId, userId) {
-    console.log(`🎯 Generating Quest ${questId} for ${topicName} / subtopic ${subtopicId} for user ${userId}`);
-    
-    // 1. Get the challenge structure
-    const challenge = challengeLoader.getChallenge(topicName, subtopicId);
-    if (!challenge) {
-        throw new Error(`Challenge not found: ${topicName} / ${subtopicId}`);
-    }
+        console.log(`🎯 Generating Quest ${questId} for ${topicName} / subtopic ${subtopicId} for user ${userId}`);
+        
+        // 1. Get the challenge structure
+        const challenge = challengeLoader.getChallenge(topicName, subtopicId);
+        if (!challenge) {
+            throw new Error(`Challenge not found: ${topicName} / ${subtopicId}`);
+        }
         
         // 2. Load user state from database
         const userState = await this.loadUserState(userId, subtopicId);
@@ -43,7 +44,7 @@ class QuestEngine {
         const simRatio = this.getSimulationRatio(questId, userState);
         
         // 7. Select questions from database
-        const questions = await this.selectQuestions(
+        let questions = await this.selectQuestions(
             userId,
             challenge.name,
             length,
@@ -51,6 +52,9 @@ class QuestEngine {
             simRatio,
             userState
         );
+        
+        // 8. Enhance with simulations and recaps
+        questions = await this.enhanceQuestWithSimulations(questions, questId, userState, challenge.name);
         
         return {
             questId,
@@ -60,25 +64,29 @@ class QuestEngine {
             name: `Quest ${questId}: ${this.getQuestName(questId)}`,
             description: this.getQuestDescription(questId, challenge),
             icon: this.getQuestIcon(questId),
-            length,
+            length: questions.length,
             gameMode,
             gameModeIcon: this.getGameModeIcon(gameMode),
             questions: questions.map(q => ({
-                id: q.Q_ID,
-                text: q.Question_Text,
+                id: q.Q_ID || q.id,
+                question_type: q.question_type || 'MCQ',
+                engine_type_sim: q.engine_type_sim,
+                mode_sim: q.mode_sim,
+                file_path_sim: q.file_path_sim,
+                text: q.Question_Text || q.text,
                 options: {
-                    A: q.Option_A,
-                    B: q.Option_B,
-                    C: q.Option_C,
-                    D: q.Option_D
+                    A: q.Option_A || q.options?.A,
+                    B: q.Option_B || q.options?.B,
+                    C: q.Option_C || q.options?.C,
+                    D: q.Option_D || q.options?.D
                 },
-                correctAnswer: q.Correct_Answer,
-                hint: q.Hint,
-                difficulty: q.Difficulty,
-                variant: this.extractVariant(q.Q_ID),
-                isSimulation: q.simulation_type ? true : false,
-                simulationType: q.simulation_type || null,
-                simulationPath: q.simulation_path || null
+                correctAnswer: q.Correct_Answer || q.correctAnswer,
+                hint: q.Hint || q.hint,
+                difficulty: q.Difficulty || q.difficulty || 'M',
+                variant: this.extractVariant(q.Q_ID || q.id),
+                isSimulation: q.question_type === 'SIM',
+                simulationType: q.engine_type_sim || null,
+                simulationPath: q.file_path_sim || null
             })),
             unlocks: {
                 nextQuest: questId < 5,
@@ -119,7 +127,7 @@ class QuestEngine {
         
         // Select questions matching each variant
         for (const [variant, needed] of Object.entries(variantCounts)) {
-            const variantQuestions = questions.filter(q => q.Q_ID.includes(`-${variant}`));
+            const variantQuestions = questions.filter(q => q.Q_ID && q.Q_ID.includes(`-${variant}`));
             selectedQuestions.push(...variantQuestions.slice(0, needed));
         }
         
@@ -135,38 +143,38 @@ class QuestEngine {
         return this.shuffleArray(selectedQuestions).slice(0, count);
     }
     
-   calculateQuestLength(userState, questId) {
-    // Different base lengths per quest
-    const baseLengths = {
-        1: 6,  // Quest 1: 6 questions (warm-up)
-        2: 8,  // Quest 2: 8 questions
-        3: 10, // Quest 3: 10 questions
-        4: 10, // Quest 4: 10 questions
-        5: 12  // Quest 5: 12 questions (mastery)
-    };
-    
-    let length = baseLengths[questId] || 8;
-    
-    // Only apply elongation for Quests 3-5 (not for warm-up!)
-    if (questId >= 3) {
-        if (userState.overallAccuracy < 60 || 
-            userState.hintUsage > this.params.hintUsageThreshold || 
-            userState.frustration > this.params.frustrationThreshold) {
-            length += Math.floor(Math.random() * 4) + 2; // +2 to +6
+    calculateQuestLength(userState, questId) {
+        // Different base lengths per quest
+        const baseLengths = {
+            1: 6,  // Quest 1: 6 questions (warm-up)
+            2: 8,  // Quest 2: 8 questions
+            3: 10, // Quest 3: 10 questions
+            4: 10, // Quest 4: 10 questions
+            5: 12  // Quest 5: 12 questions (mastery)
+        };
+        
+        let length = baseLengths[questId] || 8;
+        
+        // Only apply elongation for Quests 3-5 (not for warm-up!)
+        if (questId >= 3) {
+            if (userState.overallAccuracy < 60 || 
+                userState.hintUsage > this.params.hintUsageThreshold || 
+                userState.frustration > this.params.frustrationThreshold) {
+                length += Math.floor(Math.random() * 4) + 2; // +2 to +6
+            }
         }
+        
+        // Set caps per quest
+        const caps = {
+            1: 8,  // Quest 1 max 8 questions
+            2: 10, // Quest 2 max 10
+            3: 15, // Quest 3 max 15
+            4: 15, // Quest 4 max 15
+            5: 20  // Quest 5 max 20
+        };
+        
+        return Math.min(length, caps[questId]);
     }
-    
-    // Set caps per quest
-    const caps = {
-        1: 8,  // Quest 1 max 8 questions
-        2: 10, // Quest 2 max 10
-        3: 15, // Quest 3 max 15
-        4: 15, // Quest 4 max 15
-        5: 20  // Quest 5 max 20
-    };
-    
-    return Math.min(length, caps[questId]);
-}
     
     getVariantDistribution(questId) {
         // From your spec table
@@ -303,7 +311,11 @@ class QuestEngine {
                 hintUsage: hints.total > 0 ? Math.round((hints.hints / hints.total) * 100) : 0,
                 consecutiveErrors: consecutiveErrors,
                 avgResponseTime: Math.round((stats.avg_time || 15000) / 1000),
-                lastReviewDays: 0 // Calculate from last activity
+                lastReviewDays: 0,
+                // Per-concept stats (simplified)
+                perConceptAccuracy: {},
+                perConceptHints: {},
+                perConceptErrors: {}
             };
         } catch (err) {
             console.error('Error loading user state:', err);
@@ -316,9 +328,161 @@ class QuestEngine {
                 hintUsage: 30,
                 consecutiveErrors: 0,
                 avgResponseTime: 12,
-                lastReviewDays: 2
+                lastReviewDays: 2,
+                perConceptAccuracy: {},
+                perConceptHints: {},
+                perConceptErrors: {}
             };
         }
+    }
+    
+    async shouldShowSimulation(questId, userState, subtopicName) {
+        // Research-based ratios from your spec
+        const simRatios = {
+            1: 0.10,  // Quest 1: 10% (teaser/excitement)
+            2: 0.15,  // Quest 2: 15% (exploration)
+            3: 0.22,  // Quest 3: 22% (peak learning)
+            4: 0.25,  // Quest 4: 25% (reinforcement)
+            5: 0.30   // Quest 5: 30% (mastery pressure)
+        };
+        
+        // Base probability for this quest
+        let probability = simRatios[questId] || 0.10;
+        
+        // Adjust based on user state
+        if (userState.confidence > 75 && userState.overallTopicAccuracy < 65) {
+            probability += 0.10; // Boost for confident but struggling users
+            console.log(`📊 Simulation boost: confident but struggling`);
+        }
+        
+        if (userState.frustration > 60) {
+            probability += 0.08; // Simulations can help with frustration
+            console.log(`📊 Simulation boost: high frustration`);
+        }
+        
+        // Check if we have any simulations for this subtopic
+        const hasSims = await this.checkForSimulations(subtopicName);
+        if (!hasSims) {
+            console.log(`📊 No simulations available for ${subtopicName}`);
+            return false;
+        }
+        
+        const roll = Math.random();
+        const showSim = roll < probability;
+        
+        if (showSim) {
+            console.log(`🎮 Showing simulation in Quest ${questId} (roll: ${roll.toFixed(2)} < ${probability.toFixed(2)})`);
+        }
+        
+        return showSim;
+    }
+    
+    async checkForSimulations(subtopicName) {
+        try {
+            const result = await pool.query(
+                `SELECT COUNT(*) as count FROM qbrss 
+                 WHERE "Sub_Topic" = $1 
+                 AND "Question_Type" = 'SIM'`,
+                [subtopicName]
+            );
+            return parseInt(result.rows[0].count) > 0;
+        } catch (err) {
+            console.error('Error checking simulations:', err);
+            return false;
+        }
+    }
+    
+    // In questEngine.js, update getSimulationForConcept method:
+
+async getSimulationForConcept(subtopicName, mode = null) {
+    try {
+        let query = `
+            SELECT * FROM qbrss 
+            WHERE "Sub_Topic" = $1 
+            AND "Question_Type" = 'SIM'
+        `;
+        const params = [subtopicName];
+        
+        if (mode) {
+            query += ` AND "Mode_Sim" = $2`;  // Changed from mode_sim to Mode_Sim
+            params.push(mode);
+        }
+        
+        query += ` ORDER BY RANDOM() LIMIT 1`;
+        
+        const result = await pool.query(query, params);
+        
+        if (result.rows.length === 0) return null;
+        
+        const sim = result.rows[0];
+        
+        return {
+            id: sim.Q_ID,
+            type: 'simulation',
+            question_type: 'SIM',
+            engine_type_sim: sim.Engine_Type_Sim,  // Changed from engine_type_sim
+            mode_sim: sim.Mode_Sim,                 // Changed from mode_sim
+            file_path_sim: sim.File_Path_Sim,       // Changed from file_path_sim
+            filename_sim: sim.Filename_Sim,
+            title: sim.Question_Text,
+            hint: sim.Hint,
+            subtopic: sim.Sub_Topic,
+            tags: sim.Tags
+        };
+    } catch (err) {
+        console.error('Error getting simulation:', err);
+        return null;
+    }
+}
+    
+    async shouldShowRecap(subtopicName, userState) {
+        // Get per-concept stats (simplified - you'd need to track these per concept)
+        const conceptAccuracy = userState.perConceptAccuracy?.[subtopicName] || 100;
+        const conceptHints = userState.perConceptHints?.[subtopicName] || 0;
+        const conceptErrors = userState.perConceptErrors?.[subtopicName] || 0;
+        
+        // Trigger conditions
+        const lowAccuracy = conceptAccuracy < 60;
+        const highHints = conceptHints > 50;
+        const manyErrors = conceptErrors >= 3;
+        
+        if (lowAccuracy || highHints || manyErrors) {
+            // Get a study-mode simulation for recap
+            return await this.getSimulationForConcept(subtopicName, 'study');
+        }
+        
+        return null;
+    }
+    
+    async enhanceQuestWithSimulations(questions, questId, userState, subtopicName) {
+        const enhancedQuestions = [];
+        
+        for (let i = 0; i < questions.length; i++) {
+            const originalQuestion = questions[i];
+            
+            // Check for recap first (most important) - at start or middle
+            if (i === 0 || i === Math.floor(questions.length / 2)) {
+                const recap = await this.shouldShowRecap(subtopicName, userState);
+                if (recap) {
+                    enhancedQuestions.push(recap);
+                    continue;
+                }
+            }
+            
+            // Check for regular simulation
+            if (await this.shouldShowSimulation(questId, userState, subtopicName)) {
+                const sim = await this.getSimulationForConcept(subtopicName);
+                if (sim) {
+                    enhancedQuestions.push(sim);
+                    continue;
+                }
+            }
+            
+            // Keep original question
+            enhancedQuestions.push(originalQuestion);
+        }
+        
+        return enhancedQuestions;
     }
     
     getQuestName(questId) {
@@ -365,126 +529,6 @@ class QuestEngine {
         }
         return array;
     }
-	// Add to questEngine.js
-
-// Add to questEngine.js - inside the class
-
-async shouldShowSimulation(questId, userState, subtopicName) {
-    // Research-based ratios from your spec
-    const simRatios = {
-        1: 0.05,  // Quest 1: 5% (teaser only)
-        2: 0.10,  // Quest 2: 10% (excitement)
-        3: 0.22,  // Quest 3: 22% (peak learning)
-        4: 0.18,  // Quest 4: 18% (reinforcement)
-        5: 0.25   // Quest 5: 25% (mastery pressure)
-    };
-    
-    // Base probability
-    let probability = simRatios[questId] || 0.10;
-    
-    // Adjust based on user state
-    if (userState.confidence > 75 && userState.overallTopicAccuracy < 65) {
-        probability += 0.10; // Boost for confident but struggling users
-    }
-    
-    if (userState.frustration > 60) {
-        probability += 0.05; // Simulations can help with frustration
-    }
-    
-    return Math.random() < probability;
-}
-
-async getSimulationForConcept(subtopicName, mode = null) {
-    try {
-        let query = `
-            SELECT * FROM qbrss 
-            WHERE "Sub_Topic" = $1 
-            AND "question_type" = 'SIM'
-        `;
-        const params = [subtopicName];
-        
-        if (mode) {
-            query += ` AND "mode_sim" = $2`;
-            params.push(mode);
-        }
-        
-        query += ` ORDER BY RANDOM() LIMIT 1`;
-        
-        const result = await pool.query(query, params);
-        
-        if (result.rows.length === 0) return null;
-        
-        const sim = result.rows[0];
-        
-        return {
-            id: sim.Q_ID,
-            type: 'simulation',
-            question_type: 'SIM',
-            engine_type: sim.engine_type_sim,
-            mode: sim.mode_sim,
-            file_path: sim.file_path_sim,
-            title: sim.Question_Text,
-            hint: sim.Hint,
-            subtopic: sim.Sub_Topic,
-            tags: sim.Tags
-        };
-    } catch (err) {
-        console.error('Error getting simulation:', err);
-        return null;
-    }
-}
-
-async shouldShowRecap(subtopicName, userState) {
-    // Get per-concept stats
-    const conceptAccuracy = userState.perConceptAccuracy?.[subtopicName] || 100;
-    const conceptHints = userState.perConceptHints?.[subtopicName] || 0;
-    const conceptErrors = userState.perConceptErrors?.[subtopicName] || 0;
-    
-    // Trigger conditions
-    const lowAccuracy = conceptAccuracy < 60;
-    const highHints = conceptHints > 50;
-    const manyErrors = conceptErrors >= 3;
-    
-    if (lowAccuracy || highHints || manyErrors) {
-        // Get a study-mode simulation for recap
-        return await this.getSimulationForConcept(subtopicName, 'study');
-    }
-    
-    return null;
-}
-
-// Add this to your generateQuest method where you select questions
-// After getting the question list, check if we should replace with simulation
-async enhanceQuestWithSimulations(questions, questId, userState, subtopicName) {
-    const enhancedQuestions = [];
-    
-    for (let i = 0; i < questions.length; i++) {
-        const originalQuestion = questions[i];
-        
-        // Check for recap first (most important)
-        if (i === 0 || i === Math.floor(questions.length / 2)) {
-            const recap = await this.shouldShowRecap(subtopicName, userState);
-            if (recap) {
-                enhancedQuestions.push(recap);
-                continue;
-            }
-        }
-        
-        // Check for regular simulation
-        if (await this.shouldShowSimulation(questId, userState, subtopicName)) {
-            const sim = await this.getSimulationForConcept(subtopicName);
-            if (sim) {
-                enhancedQuestions.push(sim);
-                continue;
-            }
-        }
-        
-        // Keep original question
-        enhancedQuestions.push(originalQuestion);
-    }
-    
-    return enhancedQuestions;
-}
 }
 
 module.exports = new QuestEngine();
