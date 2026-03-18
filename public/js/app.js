@@ -23,18 +23,36 @@ const App = {
         this.loadView('topics');
     },
     
-    async loadUserData() {
-        try {
-            const response = await fetch(`/api/user-stats/${this.currentUser}`);
-            const stats = await response.json();
-            
-            document.getElementById('streakCount').textContent = stats.summary?.currentStreak || 0;
-            document.getElementById('pointsTotal').textContent = stats.summary?.totalPoints || 0;
-            
-        } catch (err) {
-            console.error('Error loading user data:', err);
+   // In app.js - update loadUserData method
+async loadUserData() {
+    try {
+        // Change this line from '/api/user-stats/student-001' to '/api/stats/user-stats/student-001'
+        const response = await fetch(`/api/stats/user-stats/${this.currentUser}`);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
         }
-    },
+        
+        const data = await response.json();
+        console.log('📊 User stats loaded:', data);
+        
+        // Update UI with the stats from the summary object
+        document.getElementById('streakCount').textContent = data.summary?.currentStreak || 0;
+        document.getElementById('pointsTotal').textContent = data.summary?.totalPoints || 0;
+        
+        // Also update psychological params if available
+        if (window.QuestScreen) {
+            window.QuestScreen.params.accuracy = data.summary?.overallAccuracy || 0;
+            window.QuestScreen.updateParameterDisplays();
+        }
+        
+    } catch (err) {
+        console.error('Error loading user data:', err);
+        // Set default values on error
+        document.getElementById('streakCount').textContent = '0';
+        document.getElementById('pointsTotal').textContent = '0';
+    }
+},
     
     setupNavigation() {
         document.querySelectorAll('.nav-btn').forEach(btn => {

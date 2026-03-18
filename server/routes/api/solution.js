@@ -6,12 +6,15 @@ const pool = require('../../config/database');
 // GET /api/solution/:questionId
 router.get('/:questionId', async (req, res) => {
     const questionId = req.params.questionId;
+    console.log(`📝 Solution endpoint called for question: ${questionId}`);
     
     try {
         const result = await pool.query(
             'SELECT "Detailed_Solution", "Hint", "Correct_Answer" FROM qbrss WHERE "Q_ID" = $1',
             [questionId]
         );
+        
+        console.log(`✅ Query returned ${result.rows.length} rows`);
         
         const row = result.rows[0];
         
@@ -23,7 +26,11 @@ router.get('/:questionId', async (req, res) => {
         
     } catch (err) {
         console.error('Error getting solution:', err);
-        res.status(500).json({ error: err.message });
+        res.status(500).json({ 
+            detailedSolution: "Error loading solution",
+            hint: "Error loading hint",
+            correctAnswer: "" 
+        });
     }
 });
 

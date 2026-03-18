@@ -1093,7 +1093,11 @@ loadQuestion(index) {
     this.currentQuestionIndex = index;
     const question = this.questions[index];
     
-    console.log(`   Loading question ${index + 1}:`, question.id);
+    console.log(`   Loading question ${index + 1}:`, {
+        id: question.id,
+        Q_ID: question.Q_ID,
+        text: question.text?.substring(0, 50)
+    });
     
     // Make sure MCQ elements are visible
     const optionsContainer = document.getElementById('options-container');
@@ -1264,137 +1268,176 @@ loadQuestion(index) {
         await this.showDetailedFeedback(this.selectedOption, correctAnswer, isCorrect, question, responseTime);
     },
     
-    async showDetailedFeedback(selected, correct, isCorrect, question, responseTime) {
-        const feedbackModal = document.createElement('div');
-        feedbackModal.className = 'feedback-card-detailed';
-        const self = this;
+    // In quest.js - update showDetailedFeedback method
+async showDetailedFeedback(selected, correct, isCorrect, question, responseTime) {
+    const feedbackModal = document.createElement('div');
+    feedbackModal.className = 'feedback-card-detailed';
+    const self = this;
+    
+    let detailedSolution = "Loading explanation...";
+    
+    try {
+        // Use the correct question ID (could be Q_ID or id)
+        const questionId = question.Q_ID || question.id;
+        console.log(`📝 Fetching solution for question ID: ${questionId}`);
         
-        let detailedSolution = "Loading explanation...";
-        try {
-            const response = await fetch(`/api/solution/${question.id}`);
+        const response = await fetch(`/api/solution/${questionId}`);
+        
+        if (response.ok) {
             const data = await response.json();
+            console.log('✅ Solution received:', data);
             detailedSolution = data.detailedSolution || "No detailed solution available.";
-        } catch (err) {
-            console.error('Error loading detailed solution:', err);
-            detailedSolution = "Unable to load explanation at this time.";
+        } else {
+            // Generate a simple explanation
+            detailedSolution = `The correct answer is ${correct}. ` +
+                             (isCorrect ? "Great job! You got it right!" : 
+                              "Review this topic to strengthen your understanding.");
         }
+    } catch (err) {
+        console.error('Error loading detailed solution:', err);
+        detailedSolution = `The correct answer is ${correct}. ` +
+                          (isCorrect ? "Well done! Keep up the good work!" : 
+                           "Keep practicing! You'll get it next time.");
+    }
+    
+    feedbackModal.innerHTML = `
+        <div class="feedback-header">
+            <span class="feedback-icon-large">${isCorrect ? '🎉' : '💪'}</span>
+            <span class="feedback-title ${isCorrect ? 'correct' : 'incorrect'}">
+                ${isCorrect ? 'Correct!' : 'Not quite right'}
+            </span>
+        </div>
         
-        feedbackModal.innerHTML = `
-            <div class="feedback-header">
-                <span class="feedback-icon-large">${isCorrect ? '🎉' : '💪'}</span>
-                <span class="feedback-title ${isCorrect ? 'correct' : 'incorrect'}">
-                    ${isCorrect ? 'Correct!' : 'Not quite right'}
-                </span>
+        <div class="feedback-comparison">
+            <div class="comparison-row">
+                <span class="comparison-label">Your answer:</span>
+                <span class="your-answer">${selected} - ${this.getOptionText(question, selected)}</span>
             </div>
-            
-            <div class="feedback-comparison">
-                <div class="comparison-row">
-                    <span class="comparison-label">Your answer:</span>
-                    <span class="your-answer">${selected} - ${this.getOptionText(question, selected)}</span>
-                </div>
-                <div class="comparison-row">
-                    <span class="comparison-label">Correct answer:</span>
-                    <span class="correct-answer">${correct} - ${this.getOptionText(question, correct)}</span>
-                </div>
-                <div class="comparison-row">
-                    <span class="comparison-label">Response time:</span>
-                    <span>${responseTime.toFixed(1)}s</span>
-                </div>
-                <div class="comparison-row">
-                    <span class="comparison-label">Hint used:</span>
-                    <span>${this.hintUsed ? 'Yes' : 'No'}</span>
-                </div>
-                <div class="comparison-row">
-                    <span class="comparison-label">Answer changes:</span>
-                    <span>${this.changeCount}</span>
-                </div>
+            <div class="comparison-row">
+                <span class="comparison-label">Correct answer:</span>
+                <span class="correct-answer">${correct} - ${this.getOptionText(question, correct)}</span>
             </div>
-            
-            <div class="detailed-solution">
-                <h4>📚 Explanation</h4>
-                <p>${detailedSolution}</p>
+            <div class="comparison-row">
+                <span class="comparison-label">Response time:</span>
+                <span>${responseTime.toFixed(1)}s</span>
             </div>
-            
-            <div class="feedback-actions">
-                <button class="feedback-btn primary" id="continue-feedback-btn">Continue</button>
+            <div class="comparison-row">
+                <span class="comparison-label">Hint used:</span>
+                <span>${this.hintUsed ? 'Yes' : 'No'}</span>
             </div>
-        `;
+            <div class="comparison-row">
+                <span class="comparison-label">Answer changes:</span>
+                <span>${this.changeCount}</span>
+            </div>
+        </div>
         
-        document.body.appendChild(feedbackModal);
+        <div class="detailed-solution">
+            <h4>📚 Explanation</h4>
+            <p>${detailedSolution}</p>
+        </div>
         
-        document.getElementById('continue-feedback-btn').addEventListener('click', () => {
-            feedbackModal.remove();
-            this.currentQuestionIndex++;
-            this.loadNextContent();
-        });
-        
-        this.answers.push({
-            questionId: question.id,
-            selectedAnswer: selected,
-            correctAnswer: correct,
-            isCorrect: isCorrect,
-            timeSpent: responseTime * 1000,
-            hintUsed: this.hintUsed,
-            answerChanged: this.answerChanged,
-            changeCount: this.changeCount,
-            hesitationCount: this.hesitationCount,
-            confidenceAtAnswer: this.params.confidence,
-            frustrationAtAnswer: this.params.frustration
-        });
-        
-        const pointsSpan = document.querySelector('.points-earned');
-        if (pointsSpan) {
-            const pointsEarned = isCorrect ? (this.hintUsed ? 2 : 3) : 0;
-            const currentPoints = parseInt(pointsSpan.textContent.split(' ')[1]) || 0;
-            pointsSpan.textContent = `⭐ ${currentPoints + pointsEarned}`;
-        }
-        
-        const correctSoFar = this.answers.filter(a => a.isCorrect).length;
-        this.params.accuracy = (correctSoFar / this.answers.length) * 100;
-        
-        const hintsUsed = this.answers.filter(a => a.hintUsed).length;
-        this.params.hintUsage = (hintsUsed / this.answers.length) * 100;
-        
-        this.params.mastery = Math.min(100, 
-            this.params.accuracy - (hintsUsed / this.answers.length) * 15
-        );
-        
-        this.updateParameterDisplays();
-        
-        if (window.GameModes) window.GameModes.questionAnswered();
-    },
+        <div class="feedback-actions">
+            <button class="feedback-btn primary" id="continue-feedback-btn">Continue</button>
+        </div>
+    `;
+    
+    document.body.appendChild(feedbackModal);
+    
+    document.getElementById('continue-feedback-btn').addEventListener('click', () => {
+        feedbackModal.remove();
+        this.currentQuestionIndex++;
+        this.loadNextContent();
+    });
+    
+    // Rest of your code (answers.push, points update, etc.) remains the same
+    this.answers.push({
+        questionId: question.id,
+        selectedAnswer: selected,
+        correctAnswer: correct,
+        isCorrect: isCorrect,
+        timeSpent: responseTime * 1000,
+        hintUsed: this.hintUsed,
+        answerChanged: this.answerChanged,
+        changeCount: this.changeCount,
+        hesitationCount: this.hesitationCount,
+        confidenceAtAnswer: this.params.confidence,
+        frustrationAtAnswer: this.params.frustration
+    });
+    
+    // Update points
+    const pointsSpan = document.querySelector('.points-earned');
+    if (pointsSpan) {
+        const pointsEarned = isCorrect ? (this.hintUsed ? 2 : 3) : 0;
+        const currentPoints = parseInt(pointsSpan.textContent.split(' ')[1]) || 0;
+        pointsSpan.textContent = `⭐ ${currentPoints + pointsEarned}`;
+    }
+    
+    // Update accuracy
+    const correctSoFar = this.answers.filter(a => a.isCorrect).length;
+    this.params.accuracy = (correctSoFar / this.answers.length) * 100;
+    
+    const hintsUsed = this.answers.filter(a => a.hintUsed).length;
+    this.params.hintUsage = (hintsUsed / this.answers.length) * 100;
+    
+    this.params.mastery = Math.min(100, 
+        this.params.accuracy - (hintsUsed / this.answers.length) * 15
+    );
+    
+    this.updateParameterDisplays();
+    
+    if (window.GameModes) window.GameModes.questionAnswered();
+},
     
     getOptionText(question, letter) {
         return question.options?.[letter] || '';
     },
     
-    async getHint() {
-        if (this.hintUsed || this.answerSubmitted) return;
+    // In quest.js - update getHint method
+async getHint() {
+    if (this.hintUsed || this.answerSubmitted) return;
+    
+    const question = this.questions[this.currentQuestionIndex];
+    console.log(`💡 Getting hint for question: ${question.id}`);
+    
+    try {
+        // Use the correct question ID (could be Q_ID or id)
+        const questionId = question.Q_ID || question.id;
+        console.log(`   Using question ID: ${questionId}`);
         
-        const question = this.questions[this.currentQuestionIndex];
-        console.log(`💡 Getting hint for question: ${question.id}`);
+        const response = await fetch(`/api/hint/${questionId}`);
         
-        try {
-            const response = await fetch(`/api/hint/${question.id}`);
-            const data = await response.json();
-            
-            if (this.hintDisplay) {
-                this.hintDisplay.textContent = data.hint || "Think carefully about what you've learned!";
-                this.hintDisplay.style.display = 'block';
-            }
-            
-            this.hintUsed = true;
-            if (this.hintBtn) this.hintBtn.disabled = true;
-            
-            this.params.confidence = Math.max(0, this.params.confidence - 5);
-            this.params.hintUsage = ((this.answers.filter(a => a.hintUsed).length + 1) / (this.answers.length + 1)) * 100;
-            this.updateParameterDisplays();
-            
-        } catch (err) {
-            console.error('❌ Error getting hint:', err);
-            alert('Failed to load hint. Please try again.');
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
         }
-    },
+        
+        const data = await response.json();
+        console.log('✅ Hint received:', data);
+        
+        if (this.hintDisplay) {
+            this.hintDisplay.textContent = data.hint || "Think carefully about what you've learned!";
+            this.hintDisplay.style.display = 'block';
+        }
+        
+        this.hintUsed = true;
+        if (this.hintBtn) this.hintBtn.disabled = true;
+        
+        this.params.confidence = Math.max(0, this.params.confidence - 5);
+        this.params.hintUsage = ((this.answers.filter(a => a.hintUsed).length + 1) / (this.answers.length + 1)) * 100;
+        this.updateParameterDisplays();
+        
+    } catch (err) {
+        console.error('❌ Error getting hint:', err);
+        
+        // Fallback hint
+        if (this.hintDisplay) {
+            this.hintDisplay.textContent = "Try to eliminate wrong answers first. Think about the key concepts!";
+            this.hintDisplay.style.display = 'block';
+        }
+        
+        this.hintUsed = true;
+        if (this.hintBtn) this.hintBtn.disabled = true;
+    }
+},
     
     updateParameterDisplays() {
         const accuracyEl = document.getElementById('param-accuracy');
