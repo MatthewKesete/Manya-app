@@ -30,3 +30,9 @@ app.listen(PORT, () => {
     console.log(`📝 Test endpoint: http://localhost:${PORT}/api/test`);
     console.log(`🎯 Modular architecture loaded`);
 });
+
+// Serve static files - this is CRITICAL
+app.use(express.static(path.join(__dirname, '../public')));
+
+// Specifically serve simulation assets
+app.use('/js/simulations/assets', express.static(path.join(__dirname, '../public/js/simulations/assets')));

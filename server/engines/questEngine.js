@@ -53,9 +53,20 @@ class QuestEngine {
             userState
         );
         
-        // 8. Enhance with simulations and recaps
+        // 8. Check if we need to insert a study sim at the beginning (Quest 1 only)
+        let studySims = [];
+        if (questId === 1) {
+            const studySim = await this.getStudySimulation(challenge.name);
+            if (studySim) {
+                studySims.push(studySim);
+                console.log(`📚 Added study sim at beginning of Quest 1 for ${challenge.name}`);
+            }
+        }
+        
+        // 9. Enhance with regular simulations and recaps
         questions = await this.enhanceQuestWithSimulations(questions, questId, userState, challenge.name);
         
+        // 10. Return the complete quest object
         return {
             questId,
             challengeId: subtopicId,
@@ -70,9 +81,10 @@ class QuestEngine {
             questions: questions.map(q => ({
                 id: q.Q_ID || q.id,
                 question_type: q.question_type || 'MCQ',
-                engine_type_sim: q.engine_type_sim,
-                mode_sim: q.mode_sim,
-                file_path_sim: q.file_path_sim,
+                engine_type_sim: q.engine_type_sim || q.Engine_Type_Sim || '3D_SKELETON',
+                mode_sim: q.mode_sim || q.Mode_Sim || 'study',
+                file_path_sim: q.file_path_sim || q.File_Path_Sim,
+                filename_sim: q.filename_sim || q.Filename_Sim,
                 text: q.Question_Text || q.text,
                 options: {
                     A: q.Option_A || q.options?.A,
@@ -85,9 +97,11 @@ class QuestEngine {
                 difficulty: q.Difficulty || q.difficulty || 'M',
                 variant: this.extractVariant(q.Q_ID || q.id),
                 isSimulation: q.question_type === 'SIM',
+                isStudySim: q.isStudySim || false,
                 simulationType: q.engine_type_sim || null,
                 simulationPath: q.file_path_sim || null
             })),
+            studySims, // Add studySims array to the response
             unlocks: {
                 nextQuest: questId < 5,
                 requirement: questId < 5 ? `${this.params.masteryUnlock}% mastery to unlock` : null,
@@ -392,48 +406,46 @@ class QuestEngine {
         }
     }
     
-    // In questEngine.js, update getSimulationForConcept method:
-
-async getSimulationForConcept(subtopicName, mode = null) {
-    try {
-        let query = `
-            SELECT * FROM qbrss 
-            WHERE "Sub_Topic" = $1 
-            AND "Question_Type" = 'SIM'
-        `;
-        const params = [subtopicName];
-        
-        if (mode) {
-            query += ` AND "Mode_Sim" = $2`;  // Changed from mode_sim to Mode_Sim
-            params.push(mode);
+    async getSimulationForConcept(subtopicName, mode = null) {
+        try {
+            let query = `
+                SELECT * FROM qbrss 
+                WHERE "Sub_Topic" = $1 
+                AND "Question_Type" = 'SIM'
+            `;
+            const params = [subtopicName];
+            
+            if (mode) {
+                query += ` AND "Mode_Sim" = $2`;
+                params.push(mode);
+            }
+            
+            query += ` ORDER BY RANDOM() LIMIT 1`;
+            
+            const result = await pool.query(query, params);
+            
+            if (result.rows.length === 0) return null;
+            
+            const sim = result.rows[0];
+            
+            return {
+                id: sim.Q_ID,
+                type: 'simulation',
+                question_type: 'SIM',
+                engine_type_sim: sim.Engine_Type_Sim,
+                mode_sim: sim.Mode_Sim,
+                file_path_sim: sim.File_Path_Sim,
+                filename_sim: sim.Filename_Sim,
+                title: sim.Question_Text,
+                hint: sim.Hint,
+                subtopic: sim.Sub_Topic,
+                tags: sim.Tags
+            };
+        } catch (err) {
+            console.error('Error getting simulation:', err);
+            return null;
         }
-        
-        query += ` ORDER BY RANDOM() LIMIT 1`;
-        
-        const result = await pool.query(query, params);
-        
-        if (result.rows.length === 0) return null;
-        
-        const sim = result.rows[0];
-        
-        return {
-            id: sim.Q_ID,
-            type: 'simulation',
-            question_type: 'SIM',
-            engine_type_sim: sim.Engine_Type_Sim,  // Changed from engine_type_sim
-            mode_sim: sim.Mode_Sim,                 // Changed from mode_sim
-            file_path_sim: sim.File_Path_Sim,       // Changed from file_path_sim
-            filename_sim: sim.Filename_Sim,
-            title: sim.Question_Text,
-            hint: sim.Hint,
-            subtopic: sim.Sub_Topic,
-            tags: sim.Tags
-        };
-    } catch (err) {
-        console.error('Error getting simulation:', err);
-        return null;
     }
-}
     
     async shouldShowRecap(subtopicName, userState) {
         // Get per-concept stats (simplified - you'd need to track these per concept)
@@ -483,6 +495,79 @@ async getSimulationForConcept(subtopicName, mode = null) {
         }
         
         return enhancedQuestions;
+    }
+    
+    // Track concept errors per user session
+    async trackConceptError(userId, subtopicName, questionId, isCorrect) {
+        try {
+            // Get or create error tracking
+            const result = await pool.query(
+                `SELECT * FROM concept_error_tracking 
+                 WHERE "userId" = $1 AND "subtopic" = $2`,
+                [userId, subtopicName]
+            );
+            
+            if (result.rows.length === 0) {
+                // First error for this concept
+                await pool.query(
+                    `INSERT INTO concept_error_tracking 
+                     ("userId", "subtopic", "errorCount", "lastQuestionId", "updatedAt")
+                     VALUES ($1, $2, $3, $4, NOW())`,
+                    [userId, subtopicName, isCorrect ? 0 : 1, questionId]
+                );
+            } else {
+                // Update existing
+                const currentCount = result.rows[0].errorCount;
+                const newCount = isCorrect ? 0 : currentCount + 1;
+                
+                await pool.query(
+                    `UPDATE concept_error_tracking 
+                     SET "errorCount" = $1, "lastQuestionId" = $2, "updatedAt" = NOW()
+                     WHERE "userId" = $3 AND "subtopic" = $4`,
+                    [newCount, questionId, userId, subtopicName]
+                );
+                
+                // Return true if we should show a study sim (2+ errors)
+                return newCount >= 2;
+            }
+        } catch (err) {
+            console.error('Error tracking concept errors:', err);
+            return false;
+        }
+    }
+    
+    async getStudySimulation(subtopicName) {
+        try {
+            const result = await pool.query(
+                `SELECT * FROM qbrss 
+                 WHERE "Sub_Topic" = $1 
+                 AND "Question_Type" = 'SIM'
+                 AND "Mode_Sim" = 'study'
+                 ORDER BY RANDOM()
+                 LIMIT 1`,
+                [subtopicName]
+            );
+            
+            if (result.rows.length === 0) return null;
+            
+            const sim = result.rows[0];
+            
+            return {
+                id: sim.Q_ID,
+                type: 'simulation',
+                question_type: 'SIM',
+                engine_type_sim: sim.Engine_Type_Sim || '3D_SKELETON',
+                mode_sim: 'study',
+                file_path_sim: sim.File_Path_Sim,
+                filename_sim: sim.Filename_Sim,
+                title: sim.Question_Text || 'Study: ' + sim.Sub_Topic,
+                subtopic: sim.Sub_Topic,
+                isStudySim: true
+            };
+        } catch (err) {
+            console.error('Error getting study simulation:', err);
+            return null;
+        }
     }
     
     getQuestName(questId) {

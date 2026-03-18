@@ -248,75 +248,88 @@
         </div>
     </template>
 
-    <template id="gameplay-view">
-        <div class="gameplay-container">
-            <div class="gameplay-header">
-                <button class="back-btn">← Exit Quest</button>
-                <div class="quest-info-header">
-                    <span class="current-quest-name"></span>
-                    <span class="game-mode-badge"></span>
-                </div>
-                <div class="quest-progress-header">
-                    <span class="question-counter">0/0</span>
-                    <span class="points-earned">⭐ 0</span>
-                </div>
+   <template id="gameplay-view">
+    <div class="gameplay-container">
+        <div class="gameplay-header">
+            <button class="back-btn">← Exit Quest</button>
+            <div class="quest-info-header">
+                <span class="current-quest-name"></span>
+                <span class="game-mode-badge"></span>
             </div>
-
-            <div class="gameplay-area">
-                <div class="question-card">
-                    <div class="question-header">
-                        <span class="topic-badge"></span>
-                        <span class="difficulty-badge"></span>
-                    </div>
-                    <div class="question-text"></div>
-                    
-                    <div class="options-container" id="options-container"></div>
-                    
-                    <div class="gameplay-footer">
-                        <button class="hint-btn" id="hintBtn">💡 Hint</button>
-                        <button class="submit-btn" id="submitBtn" disabled>✅ Submit Answer</button>
-                        <div class="timer-display" style="display: none;">⏱️ <span>00</span></div>
-                    </div>
-                    
-                    <div class="hint-display" id="hintDisplay" style="display: none;"></div>
-                </div>
-            </div>
-
-            <div class="quest-complete-overlay" style="display: none;">
-                <div class="complete-content">
-                    <h2>🎉 Quest Complete!</h2>
-                    <div class="mastery-score"></div>
-                    <div class="earned-rewards"></div>
-                    <button class="continue-btn">Continue</button>
-                </div>
+            <div class="quest-progress-header">
+                <span class="question-counter">0/0</span>
+                <span class="points-earned">⭐ 0</span>
             </div>
         </div>
-    </template>
 
-    <!-- Scripts - CRITICAL: Load in THIS EXACT ORDER -->
-    <!-- 1. Components (dependencies) -->
-    <script src="js/components/challenge-card.js"></script>
-    <script src="js/components/quest-progress.js"></script>
-    <script src="js/components/game-modes.js"></script>
-    
-    <!-- 2. Simulation loader (needed for quests) -->
-    <script src="js/simulation-loader.js"></script>
-    
-    <!-- 3. QUEST.JS MUST LOAD BEFORE CHALLENGES.JS -->
-    <script src="js/quest.js"></script>
-    
-    <!-- 4. Challenges uses QuestScreen -->
-    <script src="js/challenges.js"></script>
-    
-    <!-- 5. App initializes everything -->
-    <script src="js/app.js"></script>
-    
-    <!-- Debug script to verify loading order -->
-    <script>
-        console.log('🔍 Script loading verification:');
-        console.log('   QuestScreen available?', typeof QuestScreen !== 'undefined' ? '✅' : '❌');
-        console.log('   ChallengesScreen available?', typeof ChallengesScreen !== 'undefined' ? '✅' : '❌');
-        console.log('   GameModes available?', typeof GameModes !== 'undefined' ? '✅' : '❌');
-    </script>
+        <div class="gameplay-area">
+            <div class="question-card">
+                <div class="question-header">
+                    <span class="topic-badge"></span>
+                    <span class="difficulty-badge"></span>
+                </div>
+                <div class="question-text"></div>
+                
+                <!-- Options container for MCQ -->
+                <div class="options-container" id="options-container"></div>
+                
+                <!-- Hint display area -->
+                <div class="hint-display" id="hintDisplay" style="display: none;"></div>
+            </div>
+        </div>
+
+        <!-- FOOTER - Moved OUTSIDE gameplay-area to ensure proper positioning -->
+        <div class="gameplay-footer">
+            <button class="hint-btn" id="hintBtn">💡 Hint</button>
+            <button class="submit-btn" id="submitBtn" disabled>✅ Submit Answer</button>
+            <div class="timer-display" style="display: none;">⏱️ <span>00</span></div>
+        </div>
+
+        <div class="quest-complete-overlay" style="display: none;">
+            <div class="complete-content">
+                <h2>🎉 Quest Complete!</h2>
+                <div class="mastery-score"></div>
+                <div class="earned-rewards"></div>
+                <button class="continue-btn">Continue</button>
+            </div>
+        </div>
+    </div>
+</template>
+<!-- Load router as module (not regular script) -->
+<script type="module" src="/js/simulations/app-shell/router.js"></script>
+
+<!-- Also make it globally available with a small script -->
+<script>
+    // Wait for router to load
+    window.addEventListener('load', function() {
+        if (window.ManyaRouter) {
+            console.log('✅ ManyaRouter available');
+        } else {
+            console.warn('⚠️ ManyaRouter not found, will use fallback');
+        }
+    });
+</script>
+ <!-- 1. Pure UI/logic components (no dependencies on QuestScreen) -->
+<script src="js/components/challenge-card.js"></script>
+<script src="js/components/quest-progress.js"></script>
+<script src="js/components/game-modes.js"></script>
+
+<!-- 2. Simulation loader (prepares engines, no QuestScreen dependency) -->
+<script src="js/simulation-loader.js"></script>
+
+<!-- 3. Define QuestScreen FIRST — critical -->
+<script src="js/quest.js"></script>
+
+<!-- 4. Now safe to use QuestScreen -->
+<script src="js/challenges.js"></script>
+<script src="js/app.js"></script>
+
+<!-- 5. Final verification (should show ✅ for QuestScreen) -->
+<script>
+    console.log('🔍 FINAL LOAD CHECK AFTER ALL SCRIPTS:');
+    console.log('   QuestScreen:', typeof QuestScreen !== 'undefined' ? '✅' : '❌');
+    console.log('   ChallengesScreen:', typeof ChallengesScreen !== 'undefined' ? '✅' : '❌');
+    console.log('   GameModes:', typeof GameModes !== 'undefined' ? '✅' : '❌');
+</script>
 </body>
 </html>

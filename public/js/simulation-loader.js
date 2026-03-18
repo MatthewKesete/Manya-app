@@ -1,6 +1,5 @@
 // public/js/simulation-loader.js
 const ENGINE_NAME_MAP = {
-    // Map database values to actual filenames
     '3D_SKELETON': '3D-skeleton-engine',
     '3D_SKELETON_ENGINE': '3D-skeleton-engine',
     'GALLERY_STUDY': 'gallery-study-engine',
@@ -33,330 +32,238 @@ const ENGINE_NAME_MAP = {
     'MORPH_GAME': 'english-engines/morph_game',
     'SYNTAX_ARCHITECT': 'english-engines/syntax-architect',
     'UNIVERSAL_GLOBE': 'sst-engines/universal-globe-engine',
+    'UNKNOWN': '3D-skeleton-engine',
+    'NULL': '3D-skeleton-engine'
 };
 
 const SimulationLoader = {
     engines: {},
     modelViewerLoaded: false,
-    basePath: '/app-shell/js/engines/', // Base path from your file tree
+    basePath: '/js/simulations/app-shell/js/engines/',
+    routerLoaded: false,
+    lastSimulationResult: null,
     
     async init() {
         console.log('🔧 Initializing SimulationLoader...');
-        console.log('   Base path:', this.basePath);
         
         if (!document.querySelector('script[src*="model-viewer"]')) {
             await this.loadModelViewer();
         }
         
-        console.log('✅ SimulationLoader ready');
+        if (window.ManyaRouter) {
+            this.routerLoaded = true;
+        } else {
+            await new Promise(resolve => setTimeout(resolve, 500));
+            if (window.ManyaRouter) {
+                this.routerLoaded = true;
+            } else {
+                window.ManyaRouter = this.createFallbackRouter();
+                this.routerLoaded = true;
+            }
+        }
+        
         return this;
     },
     
+    createFallbackRouter() {
+        return {
+            registry: ENGINE_NAME_MAP,
+            
+            getEnginePath(engineType) {
+                const mappedName = ENGINE_NAME_MAP[engineType] || '3D-skeleton-engine';
+                return `/js/simulations/app-shell/js/engines/${mappedName}.js`;
+            },
+            
+            async loadInline(engineType, data, container, mode) {
+                try {
+                    const path = this.getEnginePath(engineType);
+                    const module = await import(path);
+                    const Engine = module.default || Object.values(module)[0];
+                    
+                    if (!Engine) throw new Error('No engine found');
+                    
+                    // ===== LABELING MODE (QUESTIONS) =====
+                    if (mode === 'labeling') {
+                        console.log('🔍 Loading labeling question');
+                        
+                        container.style.height = '600px';
+                        
+                        // Call the engine's renderLabeling
+                        Engine.renderLabeling(container, data);
+                        
+                        // INTERCEPT the submitAnswers function
+                        setTimeout(() => {
+                            // Store the original submitAnswers if it exists
+                            const originalSubmit = window.submitAnswers;
+                            
+                            // Replace with our intercepted version
+                            window.submitAnswers = function() {
+                                console.log('🎯 Submit Answers clicked - intercepting');
+                                
+                                // Calculate results
+                                let allCorrect = true;
+                                let correctCount = 0;
+                                const hotspots = data.hotspots || [];
+                                
+                                // This assumes the engine stores selections in window.userSelections
+                                // You may need to adjust based on how your engine stores data
+                                const selections = window.userSelections || {};
+                                
+                                hotspots.forEach(h => {
+                                    if (selections[h.id] === h.label) {
+                                        correctCount++;
+                                    } else {
+                                        allCorrect = false;
+                                    }
+                                });
+                                
+                                const isCorrect = allCorrect;
+                                const pointsEarned = isCorrect ? 3 : 0;
+                                
+                                // Store result
+                                window.SimulationLoader.lastSimulationResult = {
+                                    correct: correctCount,
+                                    total: hotspots.length,
+                                    pointsEarned: pointsEarned,
+                                    isCorrect: isCorrect,
+                                    message: isCorrect ? '✅ Correct!' : '❌ Not quite right'
+                                };
+                                
+                                console.log('✅ Result captured:', window.SimulationLoader.lastSimulationResult);
+                                
+                                // Call original if needed (to update UI)
+                                if (originalSubmit) {
+                                    originalSubmit();
+                                } else {
+                                    // If no original, update UI manually
+                                    const statusEl = container.querySelector('#q-status');
+                                    if (statusEl) {
+                                        if (isCorrect) {
+                                            statusEl.innerHTML = `<span style="color:#16a34a; font-size:1.3em;">✅ Completed correctly! Perfect score!</span>`;
+                                        } else {
+                                            statusEl.innerHTML = `<span style="color:#dc2626; font-size:1.2em;">Completed – but incorrect (${correctCount}/${hotspots.length} correct).</span>`;
+                                        }
+                                    }
+                                }
+                                
+                                // Auto-advance after delay
+                                setTimeout(() => {
+                                    if (window.QuestScreen) {
+                                        window.QuestScreen.continueAfterSimulation();
+                                    }
+                                }, 1500);
+                            };
+                        }, 500); // Wait for engine to set up its functions
+                        
+                        return;
+                    }
+                    
+                    // ===== STUDY MODE (RECAP) =====
+                    if (mode === 'study') {
+                        container.style.height = '500px';
+                        
+                        if (Engine.renderStudy) {
+                            Engine.renderStudy(container, data);
+                        } else {
+                            container.innerHTML = `
+                                <div style="width:100%; height:100%; position:relative;">
+                                    <model-viewer 
+                                        src="${data.modelUrl || data.glb || ''}"
+                                        auto-rotate
+                                        camera-controls
+                                        style="width:100%; height:100%; background-color:#111827;">
+                                    </model-viewer>
+                                </div>
+                            `;
+                        }
+                        return;
+                    }
+                    
+                } catch (err) {
+                    console.error('Router error:', err);
+                    this.renderFallback(container, data);
+                }
+            },
+            
+            renderFallback(container, data) {
+                container.innerHTML = `
+                    <model-viewer 
+                        src="${data.modelUrl || data.glb || 'https://modelviewer.dev/shared-assets/models/Astronaut.glb'}"
+                        auto-rotate
+                        camera-controls
+                        style="width:100%; height:100%; background-color:#111827;">
+                    </model-viewer>
+                `;
+            }
+        };
+    },
+    
     loadModelViewer() {
-        return new Promise((resolve, reject) => {
+        return new Promise((resolve) => {
             if (document.querySelector('script[src*="model-viewer"]')) {
                 resolve();
                 return;
             }
-            
             const script = document.createElement('script');
             script.type = 'module';
             script.src = 'https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js';
             script.onload = resolve;
-            script.onerror = reject;
             document.head.appendChild(script);
         });
     },
     
+    getLastSimulationResult() {
+        const result = this.lastSimulationResult;
+        this.lastSimulationResult = null;
+        return result;
+    },
+    
     async loadSimulation(question) {
-        console.log('🎮 Loading simulation:', question);
+        if (!question) return this.createErrorDisplay('No data');
         
-        if (!question) {
-            return this.createErrorDisplay('No simulation data');
-        }
+        if (!this.routerLoaded) await this.init();
         
-        const dbEngineName = question.engine_type_sim;
-        const mode = question.mode_sim;
-        const filePath = question.file_path_sim;
+        const mode = question.mode_sim || 'study';
         
-        console.log(`   Database engine value: ${dbEngineName}, Mode: ${mode}, Path: ${filePath}`);
-        
-        if (!dbEngineName) {
-            console.error('❌ No engine_type_sim specified');
-            return this.createErrorDisplay('Simulation engine not specified');
-        }
-        
-        // Map the database value to actual filename
-        const mappedName = ENGINE_NAME_MAP[dbEngineName];
-        if (!mappedName) {
-            console.error(`❌ No mapping found for engine: ${dbEngineName}`);
-            return this.createErrorDisplay(`Unknown engine type: ${dbEngineName}`);
-        }
-        
-        console.log(`   Mapped to: ${mappedName}`);
+        if (mode === 'labeling') this.lastSimulationResult = null;
         
         try {
-            // Get the base URL
-            const baseUrl = window.location.origin;
-            
-            // Construct the full path
-            const enginePath = `${baseUrl}${this.basePath}${mappedName}.js`;
-            console.log(`📦 Loading engine from: ${enginePath}`);
-            
-            // Try to load the engine
-            let engine;
-            try {
-                engine = await import(enginePath);
-                console.log(`✅ Successfully loaded engine`);
-            } catch (err) {
-                console.error(`❌ Failed to load from primary path:`, err);
-                
-                // Try alternative paths
-                const altPaths = [
-                    `${baseUrl}/app-shell/js/engines/${mappedName}.js`,
-                    `${baseUrl}/js/simulations/app-shell/js/engines/${mappedName}.js`,
-                    `/app-shell/js/engines/${mappedName}.js`,
-                    `./app-shell/js/engines/${mappedName}.js`,
-                ];
-                
-                let loaded = false;
-                for (const altPath of altPaths) {
-                    try {
-                        console.log(`   Trying alternative: ${altPath}`);
-                        engine = await import(altPath);
-                        console.log(`   ✅ Success with: ${altPath}`);
-                        loaded = true;
-                        break;
-                    } catch (e) {
-                        console.log(`   ❌ Failed: ${altPath}`);
-                    }
-                }
-                
-                if (!loaded) {
-                    throw new Error(`Could not load engine from any path`);
-                }
-            }
-            
-            // Load metadata
-            let metadata = {};
-            if (filePath) {
+            let simData = { ...question };
+            if (question.id) {
                 try {
-                    const cleanPath = filePath.replace(/^\/content/, '');
-                    const metadataUrl = `/api/quests/simulation${cleanPath}`;
-                    console.log(`📡 Fetching metadata from: ${metadataUrl}`);
-                    
-                    const response = await fetch(metadataUrl);
-                    if (response.ok) {
-                        metadata = await response.json();
-                        console.log('✅ Metadata loaded');
-                    } else {
-                        console.warn(`⚠️ Metadata fetch failed: ${response.status}`);
-                    }
-                } catch (fetchErr) {
-                    console.warn('⚠️ Could not load metadata:', fetchErr);
-                }
+                    const data = await this.loadSimulationData(question.id);
+                    simData = { ...simData, ...data };
+                } catch (e) {}
             }
             
-            // Create container
             const container = document.createElement('div');
             container.className = 'simulation-container';
             container.style.width = '100%';
             container.style.height = '500px';
-            container.style.position = 'relative';
-            container.style.background = '#f0f4ff';
-            container.style.borderRadius = '10px';
-            container.style.overflow = 'hidden';
             
-            // Render based on mode
-            if (mode === 'study' || mode?.includes('study')) {
-                if (engine.default?.renderStudy) {
-                    await engine.default.renderStudy(container, metadata, question);
-                } else if (engine.renderStudy) {
-                    await engine.renderStudy(container, metadata, question);
-                } else {
-                    await this.renderFallbackStudy(container, metadata, question);
-                }
-            } else if (mode === 'labeling' || mode?.includes('labeling')) {
-                if (engine.default?.renderLabeling) {
-                    await engine.default.renderLabeling(container, metadata, question);
-                } else if (engine.renderLabeling) {
-                    await engine.renderLabeling(container, metadata, question);
-                } else {
-                    await this.renderFallbackLabeling(container, metadata, question);
-                }
-            } else {
-                await this.renderFallbackStudy(container, metadata, question);
-            }
+            await window.ManyaRouter.loadInline(
+                question.engine_type_sim || '3D_SKELETON', 
+                simData, 
+                container, 
+                mode
+            );
             
             return container;
             
         } catch (err) {
-            console.error('❌ Error loading simulation:', err);
             return this.createErrorDisplay(err.message);
         }
     },
     
-    renderFallbackStudy(container, metadata, question) {
-        console.log('📝 Using fallback study renderer');
-        
-        // Try to find a GLB file
-        let glbPath = 'https://modelviewer.dev/shared-assets/models/Astronaut.glb';
-        
-        if (metadata?.glb) {
-            const filePath = question.file_path_sim || '';
-            const lastSlash = filePath.lastIndexOf('/');
-            const baseDir = lastSlash > 0 ? filePath.substring(0, lastSlash) : '';
-            const cleanBaseDir = baseDir.replace(/^\/content/, '');
-            glbPath = `/assets${cleanBaseDir}/${metadata.glb}`;
-            console.log('   GLB path:', glbPath);
-        }
-        
-        container.innerHTML = `
-            <model-viewer 
-                src="${glbPath}"
-                alt="3D Model"
-                auto-rotate
-                camera-controls
-                style="width: 100%; height: 100%; background-color: #111827;"
-                environment-image="neutral"
-                shadow-intensity="1"
-                exposure="0.8"
-                interaction-prompt="none">
-            </model-viewer>
-            ${metadata?.notes ? `
-                <div style="position: absolute; bottom: 20px; left: 20px; right: 20px; 
-                            background: rgba(0,0,0,0.8); color: white; padding: 15px; border-radius: 10px;">
-                    <p style="margin: 0;">${metadata.notes}</p>
-                </div>
-            ` : ''}
-        `;
-    },
-    
-    renderFallbackLabeling(container, metadata, question) {
-        console.log('📝 Using fallback labeling renderer');
-        
-        let glbPath = 'https://modelviewer.dev/shared-assets/models/Astronaut.glb';
-        
-        if (metadata?.glb) {
-            const filePath = question.file_path_sim || '';
-            const lastSlash = filePath.lastIndexOf('/');
-            const baseDir = lastSlash > 0 ? filePath.substring(0, lastSlash) : '';
-            const cleanBaseDir = baseDir.replace(/^\/content/, '');
-            glbPath = `/assets${cleanBaseDir}/${metadata.glb}`;
-        }
-        
-        const hotspots = metadata?.hotspots || [];
-        let hotspotsHTML = '';
-        
-        hotspots.forEach((hotspot, index) => {
-            const label = hotspot.label || `Part ${index + 1}`;
-            const position = hotspot.position || '0 0 0';
-            const normal = hotspot.normal || '0 1 0';
-            
-            hotspotsHTML += `
-                <button slot="hotspot-${index}" 
-                        class="hotspot-button"
-                        style="position: absolute; transform: translate(-50%, -50%); width: 30px; height: 30px;
-                               background: #667eea; border: 2px solid white; border-radius: 50%; cursor: pointer;
-                               box-shadow: 0 2px 10px rgba(0,0,0,0.3);"
-                        data-position="${position}"
-                        data-normal="${normal}"
-                        onclick="alert('${label}')">
-                    <div style="width: 100%; height: 100%;"></div>
-                </button>
-            `;
-        });
-        
-        container.innerHTML = `
-            <model-viewer 
-                src="${glbPath}"
-                alt="Labeling Model"
-                camera-controls
-                style="width: 100%; height: 100%; background-color: #111827;"
-                environment-image="neutral"
-                shadow-intensity="1"
-                exposure="0.8"
-                interaction-prompt="none">
-                ${hotspotsHTML}
-            </model-viewer>
-        `;
+    async loadSimulationData(questionId) {
+        const response = await fetch(`/api/simulation/data/${questionId}`);
+        return await response.json();
     },
     
     createErrorDisplay(message) {
         const div = document.createElement('div');
-        div.className = 'simulation-error';
-        div.style.cssText = `
-            padding: 40px;
-            text-align: center;
-            background: #fee;
-            border-radius: 10px;
-            color: #c00;
-            font-size: 1.1em;
-        `;
-        div.innerHTML = `
-            <p>❌ Failed to load simulation</p>
-            <p style="font-size: 0.9em; color: #666;">${message || 'Unknown error'}</p>
-            <button onclick="this.parentElement.remove()" 
-                    style="margin-top: 20px; padding: 10px 20px; background: #667eea; color: white; border: none; border-radius: 5px; cursor: pointer;">
-                Continue
-            </button>
-        `;
+        div.innerHTML = `<p>❌ ${message}</p>`;
         return div;
-    },
-    
-    async showTeaser(subtopic, glbPath) {
-        return new Promise((resolve) => {
-            const teaserDiv = document.createElement('div');
-            teaserDiv.className = 'simulation-teaser';
-            teaserDiv.style.cssText = `
-                position: fixed;
-                top: 0;
-                left: 0;
-                right: 0;
-                bottom: 0;
-                background: rgba(0,0,0,0.95);
-                z-index: 2000;
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                justify-content: center;
-                animation: fadeIn 0.3s;
-            `;
-            
-            teaserDiv.innerHTML = `
-                <model-viewer 
-                    src="${glbPath || 'https://modelviewer.dev/shared-assets/models/Astronaut.glb'}"
-                    alt="${subtopic} preview"
-                    auto-rotate
-                    camera-controls
-                    disable-zoom
-                    interaction-prompt="none"
-                    style="width: 100%; height: 70%; max-width: 800px;">
-                </model-viewer>
-                <div style="text-align: center; color: white; margin-top: 20px;">
-                    <h2 style="font-size: 2em; margin-bottom: 10px;">${subtopic}</h2>
-                    <p style="opacity: 0.8; margin-bottom: 20px;">Get ready to explore in 3D!</p>
-                    <button class="skip-teaser-btn" 
-                            style="padding: 12px 40px; background: #667eea; color: white; border: none; 
-                                   border-radius: 8px; font-size: 1.1em; cursor: pointer;">
-                        Skip
-                    </button>
-                </div>
-            `;
-            
-            document.body.appendChild(teaserDiv);
-            
-            const timer = setTimeout(() => {
-                teaserDiv.remove();
-                resolve();
-            }, 10000);
-            
-            teaserDiv.querySelector('.skip-teaser-btn').addEventListener('click', () => {
-                clearTimeout(timer);
-                teaserDiv.remove();
-                resolve();
-            });
-        });
     }
 };
 

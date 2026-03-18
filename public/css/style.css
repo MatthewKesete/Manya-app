@@ -1045,7 +1045,7 @@ body {
     color: #f56565;
     font-weight: 600;
 }
-<style>
+
     /* Simulation styles */
     .simulation-container {
         background: #f0f4ff;
@@ -1250,4 +1250,26 @@ body {
         transform: translate(-50%, -20px);
     }
 }
-</style>
+.difficulty-badge.study {
+    background: #9f7aea;
+    color: white;
+}
+
+.study-message {
+    animation: slideDown 0.3s ease;
+}
+
+.labeling-message {
+    animation: slideDown 0.3s ease;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}

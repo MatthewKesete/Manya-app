@@ -13,7 +13,8 @@ const userProfileRoutes = require('./api/userProfile');
 const hintRoutes = require('./api/hint');
 const solutionRoutes = require('./api/solution');
 const rewardsRoutes = require('./api/rewards');
-
+// Add with other route imports
+const simulationRoutes = require('./api/simulation');
 // Debug middleware
 router.use('/api', (req, res, next) => {
     console.log(`📡 API Request: ${req.method} ${req.url}`);
@@ -32,6 +33,8 @@ router.use('/api/quests', questsRoutes);
 router.use('/api/quests/rewards', rewardsRoutes);
 router.use('/api/profile', userProfileRoutes);
 
+// Add with other route registrations
+router.use('/api/simulation', simulationRoutes);
 // Test endpoint
 router.get('/api/test', async (req, res) => {
     const pool = require('../config/database');
