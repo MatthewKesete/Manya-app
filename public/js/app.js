@@ -15,13 +15,40 @@ const App = {
     currentUser: 'student-001',
     currentView: 'topics',
     
-    init() {
-        console.log('🚀 Initializing MANYA app...');
-        
-        this.loadUserData();
-        this.setupNavigation();
-        this.loadView('topics');
-    },
+async init() {
+    console.log('🚀 Initializing MANYA app...');
+    
+    // Initialize audio system
+    if (window.MANYAAudioSystem && window.MANYAAudioSystem.init) {
+        window.MANYAAudioSystem.init();
+    }
+    
+    // Initialize character system
+    if (window.MANYACharacterSystem && window.MANYACharacterSystem.init) {
+        window.MANYACharacterSystem.init();
+    }
+    
+    // Load user data
+    await this.loadUserData();
+    
+    if (window.GemDisplay && window.GemDisplay.loadGems) {
+        await window.GemDisplay.loadGems(this.currentUser);
+    }
+    
+    this.setupNavigation();
+    this.loadView('topics');
+    
+    // Activate audio on first click
+    const activateAudio = () => {
+        if (window.MANYAAudioSystem && window.MANYAAudioSystem.playClick) {
+            window.MANYAAudioSystem.playClick();
+        }
+        document.removeEventListener('click', activateAudio);
+        document.removeEventListener('touchstart', activateAudio);
+    };
+    document.addEventListener('click', activateAudio);
+    document.addEventListener('touchstart', activateAudio);
+},
     
    // In app.js - update loadUserData method
 async loadUserData() {

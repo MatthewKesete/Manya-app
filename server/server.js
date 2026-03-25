@@ -58,7 +58,8 @@ app.use((err, req, res, next) => {
         message: err.message 
     });
 });
-
+// Add this line to server.js if not already present
+app.use('/multimedia_assets', express.static(path.join(__dirname, '../multimedia_assets')));
 // ========== 8. START SERVER ==========
 app.listen(PORT, () => {
     console.log('\n' + '='.repeat(50));

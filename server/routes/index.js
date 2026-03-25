@@ -14,7 +14,10 @@ const psychologicalRoutes = require('./api/psychological');
 const userProfileRoutes = require('./api/userProfile');
 const rewardsRoutes = require('./api/rewards');
 const simulationRoutes = require('./api/simulation');
-
+// Add with other route imports
+const gamificationRoutes = require('./api/gamification');
+// Add with other imports
+const badgeRoutes = require('./api/badges');
 // Debug middleware for API routes
 router.use((req, res, next) => {
     console.log(`📡 API Route: ${req.method} ${req.url}`);
@@ -64,5 +67,8 @@ router.get('/health', (req, res) => {
         }
     });
 });
-
+// Add with other routes
+router.use('/badges', badgeRoutes);
+// Add with other route uses
+router.use('/gamification', gamificationRoutes);
 module.exports = router;
