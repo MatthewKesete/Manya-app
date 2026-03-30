@@ -71,4 +71,52 @@ router.get('/health', (req, res) => {
 router.use('/badges', badgeRoutes);
 // Add with other route uses
 router.use('/gamification', gamificationRoutes);
+// Add audio list endpoint for dynamic correct sounds
+router.get('/api/audio/correct/list', async (req, res) => {
+    const fs = require('fs');
+    const path = require('path');
+    const audioDir = path.join(__dirname, '../../multimedia_assets/audios/correct');
+    
+    try {
+        const files = fs.readdirSync(audioDir);
+        const mp3Files = files.filter(f => f.endsWith('.mp3'));
+        res.json({ files: mp3Files });
+    } catch (err) {
+        console.error('Error reading audio directory:', err);
+        // Return fallback list
+        res.json({ files: ['correct-1.mp3', 'correct-2.mp3', 'correct-3.mp3', 'correct-4.mp3', 'correct-5.mp3'] });
+    }
+});
+const coinRoutes = require('./api/coins');
+router.use('/coins', coinRoutes);
+
+// Add this after other routes, before module.exports
+// Audio list endpoint for correct sounds
+router.get('/api/audio/correct/list', async (req, res) => {
+    const fs = require('fs');
+    const path = require('path');
+    const audioDir = path.join(__dirname, '../../multimedia_assets/audios/correct');
+    
+    try {
+        // Check if directory exists
+        if (!fs.existsSync(audioDir)) {
+            console.log('Audio directory not found, using fallback');
+            return res.json({ files: ['correct-1.mp3', 'correct-2.mp3', 'correct-3.mp3', 'correct-4.mp3', 'correct-5.mp3'] });
+        }
+        
+        const files = fs.readdirSync(audioDir);
+        const mp3Files = files.filter(f => f.endsWith('.mp3'));
+        
+        if (mp3Files.length === 0) {
+            // Fallback if no files found
+            res.json({ files: ['correct-1.mp3', 'correct-2.mp3', 'correct-3.mp3', 'correct-4.mp3', 'correct-5.mp3'] });
+        } else {
+            res.json({ files: mp3Files });
+        }
+    } catch (err) {
+        console.error('Error reading audio directory:', err);
+        // Return fallback list
+        res.json({ files: ['correct-1.mp3', 'correct-2.mp3', 'correct-3.mp3', 'correct-4.mp3', 'correct-5.mp3'] });
+    }
+});
 module.exports = router;

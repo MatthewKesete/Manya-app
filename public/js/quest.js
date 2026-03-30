@@ -258,106 +258,377 @@ const QuestScreen = {
         if (this.submitBtn) this.submitBtn.disabled = false;
     },
     
-    async submitAnswer() {
-        if (!this.selectedOption || this.answerSubmitted) return;
-        
-        if (this.hesitationTimer) clearInterval(this.hesitationTimer);
-        
-        this.answerSubmitted = true;
-        if (this.submitBtn) this.submitBtn.disabled = true;
-        if (this.hintBtn) this.hintBtn.disabled = true;
-        
-        document.querySelectorAll('.option').forEach(opt => {
-            opt.style.pointerEvents = 'none';
-        });
-        
-        const responseTime = Date.now() - this.questionStartTime;
-        const question = this.questions[this.currentQuestionIndex];
-        const correctAnswer = this.extractCorrectLetter(question.correctAnswer);
-        const isCorrect = this.selectedOption === correctAnswer;
-        
+async submitAnswer() {
+    console.log('🔵 submitAnswer called');
+    
+    if (!this.selectedOption || this.answerSubmitted) {
+        console.log('   Blocked - no selection or already submitted');
+        return;
+    }
+    
+    if (this.hesitationTimer) clearInterval(this.hesitationTimer);
+    
+    this.answerSubmitted = true;
+    if (this.submitBtn) this.submitBtn.disabled = true;
+    if (this.hintBtn) this.hintBtn.disabled = true;
+    
+    document.querySelectorAll('.option').forEach(opt => {
+        opt.style.pointerEvents = 'none';
+    });
+    
+    const responseTime = Date.now() - this.questionStartTime;
+    const question = this.questions[this.currentQuestionIndex];
+    const correctAnswer = this.extractCorrectLetter(question.correctAnswer);
+    const isCorrect = this.selectedOption === correctAnswer;
+    
+    console.log(`   Answer: ${this.selectedOption}, Correct: ${correctAnswer}, Result: ${isCorrect ? '✅' : '❌'}`);
+    
+    // Track rewards
+    try {
         await this.trackEmotion(isCorrect ? 'confident' : 'frustrated', isCorrect ? 80 : 60, 'answer_submitted', responseTime);
         await this.trackReward(isCorrect, this.hintUsed, this.currentSubject);
         await this.updateStreak(isCorrect);
+        const coinResult = await this.updateCoins(isCorrect, this.hintUsed);
         
-        if (window.MANYAAudioSystem) {
-            isCorrect ? window.MANYAAudioSystem.playCorrect() : window.MANYAAudioSystem.playWrong();
-        }
+        // Show coin animation
+        this.showCoinAnimation(coinResult?.coinChange || 0);
         
-        if (window.MANYACharacterSystem) {
-            isCorrect ? window.MANYACharacterSystem.onCorrect() : window.MANYACharacterSystem.onWrong();
-        }
-        
-        if (!isCorrect) {
-            this.params.frustration = Math.min(100, this.params.frustration + 15);
-            this.params.confidence = Math.max(0, this.params.confidence - 10);
-        } else {
-            this.params.frustration = Math.max(0, this.params.frustration - 5);
-            this.params.confidence = Math.min(100, this.params.confidence + 5);
-        }
-        
-        document.querySelectorAll('.option').forEach(opt => {
-            if (opt.dataset.letter === correctAnswer) {
-                opt.classList.add('correct');
-            } else if (opt.dataset.letter === this.selectedOption && !isCorrect) {
-                opt.classList.add('incorrect');
-            }
-        });
-        
-        this.updateParameterDisplays();
-        await this.showDetailedFeedback(this.selectedOption, correctAnswer, isCorrect, question, responseTime / 1000);
-    },
+    } catch (err) {
+        console.error('Error tracking rewards:', err);
+    }
     
-    async showDetailedFeedback(selected, correct, isCorrect, question, responseTime) {
-        const feedbackModal = document.createElement('div');
-        feedbackModal.className = 'feedback-card-detailed';
+    // Update UI highlighting
+    document.querySelectorAll('.option').forEach(opt => {
+        if (opt.dataset.letter === correctAnswer) {
+            opt.classList.add('correct');
+        } else if (opt.dataset.letter === this.selectedOption && !isCorrect) {
+            opt.classList.add('incorrect');
+        }
+    });
+    
+    // Store the answer
+    this.answers.push({
+        questionId: question.id,
+        selectedAnswer: this.selectedOption,
+        correctAnswer: correctAnswer,
+        isCorrect: isCorrect,
+        timeSpent: responseTime,
+        hintUsed: this.hintUsed,
+        answerChanged: this.answerChanged,
+        changeCount: this.changeCount,
+        hesitationCount: this.hesitationCount
+    });
+    
+    console.log(`   Answer stored, total answers: ${this.answers.length}`);
+    
+    // Update points display
+    const pointsSpan = document.querySelector('.points-earned');
+    if (pointsSpan) {
+        const pointsEarned = isCorrect ? (this.hintUsed ? 2 : 3) : 0;
+        const currentPoints = parseInt(pointsSpan.textContent.split(' ')[1]) || 0;
+        pointsSpan.textContent = `⭐ ${currentPoints + pointsEarned}`;
+    }
+    
+    // Update accuracy
+    const correctSoFar = this.answers.filter(a => a.isCorrect).length;
+    this.params.accuracy = (correctSoFar / this.answers.length) * 100;
+    this.updateParameterDisplays();
+    
+    // Handle based on correct/wrong
+    if (isCorrect) {
+        // CORRECT ANSWER - Double green flash, word flash, coin animation, NO modal
+        console.log('   CORRECT - Playing effects, no modal');
         
-        let detailedSolution = `The correct answer is ${correct}. ${isCorrect ? "Great job!" : "Keep practicing!"}`;
+        // Double screen flash
+        this.showDoubleScreenFlash('correct');
         
-        try {
-            const response = await fetch(`/api/solution/${question.id}`);
-            if (response.ok) {
-                const data = await response.json();
-                if (data.detailedSolution) detailedSolution = data.detailedSolution;
-            }
-        } catch (err) {}
+        // Play random sound and get the word
+        let word = null;
+        if (window.MANYAAudioSystem) {
+            word = await window.MANYAAudioSystem.playCorrectRandom();
+        }
         
-        feedbackModal.innerHTML = `
-            <div class="feedback-header">
-                <span class="feedback-icon-large">${isCorrect ? '🎉' : '💪'}</span>
-                <span class="feedback-title ${isCorrect ? 'correct' : 'incorrect'}">${isCorrect ? 'Correct!' : 'Not quite right'}</span>
-            </div>
-            <div class="feedback-comparison">
-                <div class="comparison-row"><span class="comparison-label">Your answer:</span><span>${selected} - ${this.getOptionText(question, selected)}</span></div>
-                <div class="comparison-row"><span class="comparison-label">Correct answer:</span><span>${correct} - ${this.getOptionText(question, correct)}</span></div>
-            </div>
-            <div class="detailed-solution"><h4>📚 Explanation</h4><p>${detailedSolution}</p></div>
-            <div class="feedback-actions"><button class="feedback-btn primary" id="continue-feedback-btn">Continue</button></div>
-        `;
+        // Show word flash
+        if (word) {
+            this.showWordFlash(word);
+        }
         
-        document.body.appendChild(feedbackModal);
+        // Character reaction
+        if (window.MANYACharacterSystem) {
+            window.MANYACharacterSystem.onCorrect();
+        }
         
-        document.getElementById('continue-feedback-btn').addEventListener('click', () => {
-            feedbackModal.remove();
+        // Auto-advance after effects
+        setTimeout(() => {
             this.currentQuestionIndex++;
+            console.log(`   Advancing to question ${this.currentQuestionIndex + 1}`);
             this.loadNextContent();
+        }, 1500);
+        
+    } else {
+        // WRONG ANSWER - Red flash, show feedback modal
+        console.log('   WRONG - Showing feedback modal');
+        
+        // Double red flash
+        this.showDoubleScreenFlash('wrong');
+        
+        // Play wrong sound
+        if (window.MANYAAudioSystem) {
+            window.MANYAAudioSystem.playWrong();
+        }
+        
+        // Character reaction
+        if (window.MANYACharacterSystem) {
+            window.MANYACharacterSystem.onWrong();
+        }
+        
+        // Show feedback modal
+        await this.showDetailedFeedbackModal(question, correctAnswer, responseTime);
+    }
+},
+
+// New method for double screen flash
+showDoubleScreenFlash(type) {
+    const existing = document.querySelector('.screen-flash-double');
+    if (existing) existing.remove();
+    
+    const flash = document.createElement('div');
+    flash.className = `screen-flash-double ${type}`;
+    document.body.appendChild(flash);
+    
+    setTimeout(() => {
+        if (flash.parentNode) flash.remove();
+    }, 600);
+},
+
+// New method for word flash (like Candy Crush)
+showWordFlash(word) {
+    const existing = document.querySelector('.word-flash');
+    if (existing) existing.remove();
+    
+    const wordEl = document.createElement('div');
+    wordEl.className = 'word-flash';
+    wordEl.textContent = word.toUpperCase();
+    document.body.appendChild(wordEl);
+    
+    setTimeout(() => {
+        if (wordEl.parentNode) wordEl.remove();
+    }, 600);
+},
+
+// Updated coin animation
+showCoinAnimation(change) {
+    const animation = document.createElement('div');
+    animation.className = `coin-animation ${change > 0 ? 'gain' : 'loss'}`;
+    animation.innerHTML = change > 0 ? `+${change} 🪙` : `${change} 🪙`;
+    
+    document.body.appendChild(animation);
+    setTimeout(() => animation.remove(), 1000);
+    
+    if (window.MANYAAudioSystem) {
+        if (change > 0) {
+            window.MANYAAudioSystem.playCoinCollect();
+        } else if (change < 0) {
+            window.MANYAAudioSystem.playCoinDeduct();
+        }
+    }
+},
+
+// Updated feedback modal for wrong answers only
+async showDetailedFeedbackModal(question, correctAnswer, responseTime) {
+    const feedbackModal = document.createElement('div');
+    feedbackModal.className = 'feedback-card-detailed';
+    feedbackModal.style.cssText = `
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: white;
+        border-radius: 20px;
+        padding: 25px;
+        max-width: 450px;
+        width: 90%;
+        z-index: 20000;
+        box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+    `;
+    
+    let detailedSolution = '';
+    try {
+        const response = await fetch(`/api/solution/${question.id}`);
+        if (response.ok) {
+            const data = await response.json();
+            detailedSolution = data.detailedSolution || '';
+        }
+    } catch (err) {}
+    
+    if (!detailedSolution) {
+        detailedSolution = `The correct answer is ${correctAnswer}. Review this topic to strengthen your understanding. 📚`;
+    }
+    
+    feedbackModal.innerHTML = `
+        <div style="text-align: center; margin-bottom: 20px;">
+            <span style="font-size: 3em;">💪</span>
+            <h2 style="color: #f56565; margin: 10px 0;">Not quite right</h2>
+        </div>
+        <div style="background: #f7fafc; padding: 15px; border-radius: 12px; margin-bottom: 20px;">
+            <p><strong>Your answer:</strong> ${this.selectedOption} - ${this.getOptionText(question, this.selectedOption)}</p>
+            <p><strong>Correct answer:</strong> ${correctAnswer} - ${this.getOptionText(question, correctAnswer)}</p>
+        </div>
+        <div style="margin-bottom: 20px;">
+            <h4>📚 Explanation</h4>
+            <p>${detailedSolution}</p>
+        </div>
+        <div style="text-align: center;">
+            <button id="continue-btn" style="
+                background: #667eea;
+                color: white;
+                border: none;
+                padding: 12px 40px;
+                border-radius: 30px;
+                font-size: 1.1em;
+                font-weight: bold;
+                cursor: pointer;
+                transition: all 0.3s;
+            ">Continue →</button>
+        </div>
+    `;
+    
+    document.body.appendChild(feedbackModal);
+    
+    const continueBtn = feedbackModal.querySelector('#continue-btn');
+    continueBtn.onmouseover = () => continueBtn.style.transform = 'scale(1.05)';
+    continueBtn.onmouseout = () => continueBtn.style.transform = 'scale(1)';
+    
+    continueBtn.onclick = () => {
+        feedbackModal.remove();
+        this.currentQuestionIndex++;
+        console.log(`   Advancing to question ${this.currentQuestionIndex + 1}`);
+        this.loadNextContent();
+    };
+},
+
+// Keep these existing methods
+async updateCoins(isCorrect, hintUsed) {
+    const userId = window.App?.currentUser || 'student-001';
+    
+    try {
+        const response = await fetch('/api/coins/update', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId, isCorrect, hintUsed })
         });
         
-        this.answers.push({
-            questionId: question.id,
-            selectedAnswer: selected,
-            correctAnswer: correct,
-            isCorrect: isCorrect,
-            timeSpent: responseTime * 1000,
-            hintUsed: this.hintUsed,
-            answerChanged: this.answerChanged,
-            changeCount: this.changeCount
-        });
+        const data = await response.json();
+        this.updateCoinDisplay(data.newBalance);
+        return data;
+    } catch (err) {
+        console.error('Error updating coins:', err);
+        return null;
+    }
+},
+
+updateCoinDisplay(balance) {
+    const coinEl = document.getElementById('coin-balance');
+    if (coinEl) {
+        coinEl.textContent = `🪙 ${balance}`;
+    }
+},
+
+getOptionText(question, letter) {
+    return question.options?.[letter] || '';
+},
+
+async showFeedbackAndContinue(question, isCorrect, correctAnswer, responseTime) {
+    console.log('📢 showFeedbackAndContinue called');
+    
+    // Get solution text
+    let detailedSolution = '';
+    try {
+        const response = await fetch(`/api/solution/${question.id}`);
+        if (response.ok) {
+            const data = await response.json();
+            detailedSolution = data.detailedSolution || '';
+        }
+    } catch (err) {}
+    
+    if (!detailedSolution) {
+        detailedSolution = isCorrect 
+            ? "Great job! You got it right! 🎉"
+            : `The correct answer is ${correctAnswer}. Keep practicing! 📚`;
+    }
+    
+    // Create feedback modal
+    const feedbackModal = document.createElement('div');
+    feedbackModal.className = 'feedback-card-detailed';
+    feedbackModal.style.cssText = `
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: white;
+        border-radius: 20px;
+        padding: 25px;
+        max-width: 400px;
+        width: 90%;
+        z-index: 20000;
+        box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+        text-align: center;
+    `;
+    
+    feedbackModal.innerHTML = `
+        <div style="margin-bottom: 20px;">
+            <span style="font-size: 3em;">${isCorrect ? '🎉' : '💪'}</span>
+            <h2 style="color: ${isCorrect ? '#48bb78' : '#f56565'}; margin: 10px 0;">
+                ${isCorrect ? 'Correct!' : 'Not quite right'}
+            </h2>
+        </div>
+        <div style="background: #f7fafc; padding: 15px; border-radius: 12px; margin-bottom: 20px;">
+            <p><strong>Your answer:</strong> ${this.selectedOption} - ${this.getOptionText(question, this.selectedOption)}</p>
+            <p><strong>Correct answer:</strong> ${correctAnswer} - ${this.getOptionText(question, correctAnswer)}</p>
+        </div>
+        <div style="margin-bottom: 20px;">
+            <p>${detailedSolution}</p>
+        </div>
+        <button id="continue-btn" style="
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 30px;
+            font-size: 1.1em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        ">Continue →</button>
+    `;
+    
+    document.body.appendChild(feedbackModal);
+    
+    // Add hover effect
+    const continueBtn = feedbackModal.querySelector('#continue-btn');
+    continueBtn.onmouseover = () => continueBtn.style.transform = 'scale(1.05)';
+    continueBtn.onmouseout = () => continueBtn.style.transform = 'scale(1)';
+    
+    // Handle continue click
+    continueBtn.onclick = () => {
+        console.log('🟢 Continue button clicked!');
+        feedbackModal.remove();
         
-        const correctSoFar = this.answers.filter(a => a.isCorrect).length;
-        this.params.accuracy = (correctSoFar / this.answers.length) * 100;
-        this.updateParameterDisplays();
-    },
+        // Move to next question
+        this.currentQuestionIndex++;
+        console.log(`   Moving to question index: ${this.currentQuestionIndex}`);
+        console.log(`   Total questions: ${this.questions.length}`);
+        
+        this.loadNextContent();
+    };
+    
+    console.log('   Feedback modal shown, waiting for continue click');
+},
+
+// Helper method to get option text
+getOptionText(question, letter) {
+    return question.options?.[letter] || '';
+},
     
     getOptionText(question, letter) {
         return question.options?.[letter] || '';
@@ -718,7 +989,97 @@ const QuestScreen = {
     
     exit() {
         if (this.onComplete) this.onComplete();
+    },
+    // Add to QuestScreen object
+
+// Screen flash effect
+showScreenFlash(type) {
+    // Remove existing flash
+    const existing = document.querySelector('.screen-flash');
+    if (existing) existing.remove();
+    
+    // Create flash element
+    const flash = document.createElement('div');
+    flash.className = `screen-flash ${type}`;
+    document.body.appendChild(flash);
+    
+    // Add shake effect for wrong answers
+    if (type === 'wrong') {
+        document.body.classList.add('screen-shake');
+        setTimeout(() => document.body.classList.remove('screen-shake'), 300);
     }
+    
+    // Remove flash after animation
+    setTimeout(() => {
+        if (flash.parentNode) flash.remove();
+    }, 300);
+},
+
+// Update coin tracking in submitAnswer
+async updateCoins(isCorrect, hintUsed) {
+    const userId = window.App?.currentUser || 'student-001';
+    
+    try {
+        const response = await fetch('/api/coins/update', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId, isCorrect, hintUsed })
+        });
+        
+        const data = await response.json();
+        
+        // Show coin animation
+        this.showCoinAnimation(data.coinChange);
+        
+        // Update coin display
+        this.updateCoinDisplay(data.newBalance);
+        
+        return data;
+    } catch (err) {
+        console.error('Error updating coins:', err);
+        return null;
+    }
+},
+
+// Show coin collection/deduction animation
+showCoinAnimation(change) {
+    const animation = document.createElement('div');
+    animation.className = `coin-animation ${change > 0 ? 'gain' : 'loss'}`;
+    animation.innerHTML = change > 0 ? `+${change} 🪙` : `${change} 🪙`;
+    animation.style.cssText = `
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: 2em;
+        font-weight: bold;
+        color: ${change > 0 ? '#fbbf24' : '#ef4444'};
+        text-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        pointer-events: none;
+        z-index: 10001;
+        animation: coinFloat 1s ease-out forwards;
+    `;
+    
+    document.body.appendChild(animation);
+    setTimeout(() => animation.remove(), 1000);
+    
+    // Play sound
+    if (window.MANYAAudioSystem) {
+        if (change > 0) {
+            window.MANYAAudioSystem.playCoinCollect();
+        } else {
+            window.MANYAAudioSystem.playCoinDeduct();
+        }
+    }
+},
+
+// Update coin display in UI
+updateCoinDisplay(balance) {
+    const coinEl = document.getElementById('coin-balance');
+    if (coinEl) {
+        coinEl.textContent = `🪙 ${balance}`;
+    }
+}
 };
 
 window.QuestScreen = QuestScreen;

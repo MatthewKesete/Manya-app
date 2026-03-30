@@ -159,15 +159,21 @@
             }, duration);
         },
         
-        onCorrect() { 
-            this.speak(this.getCharacter().messages.correct, 2000);
-            if(window.MANYAAudioSystem) window.MANYAAudioSystem.playCorrect();
-        },
-        
-        onWrong() { 
-            this.speak(this.getCharacter().messages.wrong, 2000);
-            if(window.MANYAAudioSystem) window.MANYAAudioSystem.playWrong();
-        },
+       // In characterSystem.js, find the onCorrect and onWrong methods and update:
+
+onCorrect() { 
+    this.speak(this.getCharacter().messages.correct, 2000);
+    if(window.MANYAAudioSystem && window.MANYAAudioSystem.playCorrect) {
+        window.MANYAAudioSystem.playCorrect();
+    }
+},
+
+onWrong() { 
+    this.speak(this.getCharacter().messages.wrong, 2000);
+    if(window.MANYAAudioSystem && window.MANYAAudioSystem.playWrong) {
+        window.MANYAAudioSystem.playWrong();
+    }
+},
         
         onStreak(streak) {
             if (streak >= 3 && streak % 3 === 0) {

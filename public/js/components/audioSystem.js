@@ -8,82 +8,94 @@
     
     const AudioSystemInstance = {
         enabled: true,
-        soundMap: {
-            // Correct/Positive sounds
-            'correct': 'collect-points.mp3',
-            'correct_alt': 'shine.mp3',
-            'correct_bonus': 'game-bonus.mp3',
-            'magic': 'twin-sparkle.mp3',
-            'applause': 'applause.mp3',
-            
-            // Wrong/Error sounds
-            'wrong': 'error-mistake.mp3',
-            'wrong_alt': 'whoosh.mp3',
-            
-            // Rewards
-            'chest': 'collect-points.mp3',
-            'level_up': 'level-up.mp3',
-            'level_up_alt': 'video-game-bonus.mp3',
-            'achievement': 'fanfare-trumpets.mp3',
-            'badge': 'applause.mp3',
-            'points': 'collect-points.mp3',
-            
-            // UI
-            'click': 'ui-click.mp3',
-            
-            // Background
-            'background_day': 'day.mp3',
-            'background_night': 'night.mp3',
-            'background_rain': 'rain.mp3',
-            'background_ambient': 'freesound_community-night-cricket-ambience-22484.mp3'
-        },
+        correctAudioList: [],
+        correctAudioLoaded: false,
         
-        init() {
+        async init() {
+            console.log('🎵 Audio system initializing...');
+            await this.loadCorrectAudios();
             console.log('🎵 Audio system ready');
             return this;
         },
         
-        play(soundName, volume = 0.5) {
+        async loadCorrectAudios() {
+            try {
+                const response = await fetch('/api/audio/correct/list');
+                if (response.ok) {
+                    const data = await response.json();
+                    this.correctAudioList = data.files;
+                    console.log(`🎵 Loaded ${this.correctAudioList.length} correct audio files:`, this.correctAudioList);
+                } else {
+                    throw new Error('Server returned error');
+                }
+            } catch (err) {
+                console.warn('Could not load correct audio list, using fallback');
+                this.correctAudioList = ['Great.mp3', 'Excellent.mp3', 'Perfect.mp3', 'Amazing.mp3', 'Awesome.mp3'];
+            }
+            this.correctAudioLoaded = true;
+        },
+        
+        // Play random correct answer sound
+        async playCorrectRandom() {
             if (!this.enabled) return;
-            const fileName = this.soundMap[soundName];
-            if (!fileName) return;
+            
+            if (!this.correctAudioLoaded) {
+                await this.loadCorrectAudios();
+            }
+            
+            if (this.correctAudioList.length === 0) {
+                return;
+            }
+            
+            const randomIndex = Math.floor(Math.random() * this.correctAudioList.length);
+            const fileName = this.correctAudioList[randomIndex];
             
             try {
-                const audio = new Audio(`/multimedia_assets/audios/${fileName}`);
-                audio.volume = volume;
+                const audio = new Audio(`/multimedia_assets/audios/correct/${fileName}`);
+                audio.volume = 0.7;
+                const playPromise = audio.play();
+                if (playPromise !== undefined) {
+                    playPromise.catch(err => {
+                        console.warn(`Failed to play ${fileName}:`, err);
+                    });
+                }
+                return fileName.replace('.mp3', ''); // Return word for text flash
+            } catch (err) {
+                console.warn(`Error creating audio for ${fileName}:`, err);
+                return null;
+            }
+        },
+        
+        playWrong() {
+            try {
+                const audio = new Audio(`/multimedia_assets/audios/error-mistake.mp3`);
+                audio.volume = 0.5;
                 audio.play().catch(() => {});
             } catch (err) {}
         },
         
-        playCorrect() { this.play('correct', 0.5); },
-        playWrong() { this.play('wrong', 0.4); },
-        playClick() { this.play('click', 0.3); },
-        
-        playGemCollect() { 
-            this.play('points', 0.5);
-            // Random chance for bonus sound
-            if (Math.random() < 0.3) {
-                setTimeout(() => this.play('correct_bonus', 0.4), 150);
-            }
+        playClick() {
+            try {
+                const audio = new Audio(`/multimedia_assets/audios/ui-click.mp3`);
+                audio.volume = 0.3;
+                audio.play().catch(() => {});
+            } catch (err) {}
         },
         
-        playLevelUp() { 
-            this.play('level_up', 0.7);
-            setTimeout(() => this.play('achievement', 0.5), 400);
+        playCoinCollect() {
+            try {
+                const audio = new Audio(`/multimedia_assets/audios/collect-points.mp3`);
+                audio.volume = 0.5;
+                audio.play().catch(() => {});
+            } catch (err) {}
         },
         
-        playChestOpen() {
-            this.play('chest', 0.6);
-            setTimeout(() => this.play('magic', 0.4), 200);
-        },
-        
-        playStreakAchievement(streak) {
-            if (streak >= 7) {
-                this.play('level_up_alt', 0.7);
-                setTimeout(() => this.play('achievement', 0.5), 300);
-            } else if (streak >= 3) {
-                this.play('correct_bonus', 0.5);
-            }
+        playCoinDeduct() {
+            try {
+                const audio = new Audio(`/multimedia_assets/audios/whoosh.mp3`);
+                audio.volume = 0.4;
+                audio.play().catch(() => {});
+            } catch (err) {}
         }
     };
     

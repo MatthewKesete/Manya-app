@@ -72,7 +72,21 @@ async loadUserData() {
             window.QuestScreen.params.accuracy = data.summary?.overallAccuracy || 0;
             window.QuestScreen.updateParameterDisplays();
         }
+        try {
+        const response = await fetch(`/api/stats/user-stats/${this.currentUser}`);
+        const stats = await response.json();
         
+        document.getElementById('streakCount').textContent = stats.summary?.currentStreak || 0;
+        document.getElementById('pointsTotal').textContent = stats.summary?.totalPoints || 0;
+        
+        // Load coin balance
+        const coinResponse = await fetch(`/api/coins/balance/${this.currentUser}`);
+        const coinData = await coinResponse.json();
+        document.getElementById('coin-balance').textContent = coinData.balance || 0;
+        
+    } catch (err) {
+        console.error('Error loading user data:', err);
+    }
     } catch (err) {
         console.error('Error loading user data:', err);
         // Set default values on error
