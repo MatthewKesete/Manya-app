@@ -922,7 +922,6 @@ ALTER TABLE ONLY public.user_quests ALTER COLUMN id SET DEFAULT nextval('public.
 -- Data for Name: badges; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-COPY public.badges (id, user_id, badge_type, badge_name, badge_icon, rarity, earned_at) FROM stdin;
 1	student-001	no_hint_hero	No Hint Hero	=ƒª+	rare	2026-03-25 23:24:55.530789
 
 
@@ -930,21 +929,18 @@ COPY public.badges (id, user_id, badge_type, badge_name, badge_icon, rarity, ear
 -- Data for Name: chests; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-COPY public.chests (id, user_id, chest_type, opened, unlocked_at, opened_at, contents) FROM stdin;
 
 
 --
 -- Data for Name: concept_error_tracking; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-COPY public.concept_error_tracking (id, "userId", subtopic, "errorCount", "lastQuestionId", "updatedAt") FROM stdin;
 
 
 --
 -- Data for Name: concept_mastery; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-COPY public.concept_mastery (id, "userId", "baseId", "masteryLevel", "reviewCount", "lastReviewedAt", "nextReviewAt", "correctStreak", "totalAttempts", "totalCorrect", "createdAt", "updatedAt") FROM stdin;
 1	student-001	SCI-P7-T1-MC-00001	learning	1	2026-03-08 23:59:01.727	2026-03-09 23:59:01.727	1	1	1	2026-03-08 23:59:01.75947	2026-03-08 23:59:01.75947
 2	student-001	SCI-P7-T1-MC-00003	learning	1	2026-03-09 03:37:25.747	2026-03-10 03:37:25.747	1	1	1	2026-03-09 03:37:25.750872	2026-03-09 03:37:25.750872
 3	student-001	SCI-P7-T1-MC-00005	learning	1	2026-03-09 03:37:47.051	2026-03-10 03:37:47.051	1	1	1	2026-03-09 03:37:47.071762	2026-03-09 03:37:47.071762
@@ -968,14 +964,12 @@ COPY public.concept_mastery (id, "userId", "baseId", "masteryLevel", "reviewCoun
 -- Data for Name: daily_challenges; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-COPY public.daily_challenges (id, challenge_date, challenge_type, target_value, reward_gems, reward_power_up, completed_by) FROM stdin;
 
 
 --
 -- Data for Name: emotional_metrics; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-COPY public.emotional_metrics (id, user_id, session_id, emotion, intensity, context, recorded_at, response_time_ms) FROM stdin;
 1	student-001	\N	frustrated	60	answer_submitted	2026-03-23 17:09:49.681987	2
 2	student-001	\N	confident	80	answer_submitted	2026-03-23 17:10:02.010679	8
 3	student-001	\N	frustrated	60	answer_submitted	2026-03-23 17:10:09.865391	5
@@ -1123,14 +1117,12 @@ COPY public.emotional_metrics (id, user_id, session_id, emotion, intensity, cont
 -- Data for Name: power_ups; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-COPY public.power_ups (id, user_id, power_up_type, quantity, acquired_at, expires_at) FROM stdin;
 
 
 --
 -- Data for Name: qbrss; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-COPY public.qbrss ("Q_ID", "Term", "Topic", "Sub_Topic", "Difficulty", "Question_Type", "Parent_ID", "Order_In_Parent", "Question_Text", "Option_A", "Option_B", "Option_C", "Option_D", "Correct_Answer", "Hint", "Detailed_Solution", "Image_Location", "Tags", "Engine_Type_Sim", "Mode_Sim", "File_Path_Sim", "Filename_Sim", "Mark", simulation_type, simulation_path, simulation_thumbnail) FROM stdin;
 SCI-P7-T1-MC-00001-V1	T1	Musculo-Skeletal System	types_of_skeleton	E	MCQ	null	null	Manya is revising for his Science PLE and reads about body structures. How should he define what a skeleton is?	A framework of bones	A group of muscles	A layer of skin	A system of nerves	Option_A	It is the structure that holds the body up.	A skeleton is defined as the supportive framework of bones in an organism.	null	["P7","Science","Skeleton"]	\N	\N	\N	\N	Yes	\N	\N	\N
 SCI-P7-T1-MC-00001-V2	T1	Musculo-Skeletal System	types_of_skeleton	E	MCQ	null	null	Kiti the Cat is looking at a diagram of the human body. What is the correct definition of a skeleton?	A framework of bones	A group of muscles	A layer of skin	A system of nerves	Option_A	It is the structure that holds the body up.	A skeleton is defined as the supportive framework of bones in an organism.	null	["P7","Science","Skeleton"]	\N	\N	\N	\N	Yes	\N	\N	\N
 SCI-P7-T1-MC-00001-V3	T1	Musculo-Skeletal System	types_of_skeleton	E	MCQ	null	null	Polly the Parrot is teaching her friends about how the body stays upright. What exactly is a skeleton?	A framework of bones	A group of muscles	A layer of skin	A system of nerves	Option_A	It is the structure that holds the body up.	A skeleton is defined as the supportive framework of bones in an organism.	null	["P7","Science","Skeleton"]	\N	\N	\N	\N	No	\N	\N	\N
@@ -3677,14 +3669,12 @@ SCI-P7-T1-SM-TEST-001	T1	Musculo-Skeletal System	bone_structure	M	SIM	\N	\N	Inte
 -- Data for Name: quest_progress; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-COPY public.quest_progress (id, "userId", "questId", mastery, "completedAt", "xpEarned") FROM stdin;
 
 
 --
 -- Data for Name: quest_rewards; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-COPY public.quest_rewards (id, "userId", "questId", "rewardType", "rewardValue", "badgeEarned", "claimedAt") FROM stdin;
 1	student-001	1	xp	100	=ƒî¦	2026-03-09 03:39:21.751302
 
 
@@ -3692,7 +3682,6 @@ COPY public.quest_rewards (id, "userId", "questId", "rewardType", "rewardValue",
 -- Data for Name: quests; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-COPY public.quests (id, "questId", name, description, "baseQuestions", "minQuestions", "maxQuestions", difficulty, focus, "unlockQuestId", "unlockMastery", "xpReward", "badgeIcon", "orderNum", "createdAt") FROM stdin;
 1	1	Foundation Builder	Build your basic understanding of core concepts	6	5	8	easy	core_concepts	\N	0	100	??	1	2026-03-09 03:27:12.184433
 2	2	Concept Mastery	Deepen your understanding with application questions	8	6	10	easy	application	1	60	150	??	2	2026-03-09 03:27:12.184433
 3	3	Application Challenge	Apply what you've learned to new situations	8	6	10	medium	analysis	2	65	200	??	3	2026-03-09 03:27:12.184433
@@ -3709,7 +3698,6 @@ COPY public.quests (id, "questId", name, description, "baseQuestions", "minQuest
 -- Data for Name: subject_gems; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-COPY public.subject_gems (id, user_id, subject, gem_count, updated_at) FROM stdin;
 1	student-001	math	36	2026-03-24 02:05:06.736936
 16	student-001	science	333	2026-03-30 16:20:19.655865
 
@@ -3718,14 +3706,12 @@ COPY public.subject_gems (id, user_id, subject, gem_count, updated_at) FROM stdi
 -- Data for Name: unlocked_simulations; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-COPY public.unlocked_simulations (id, user_id, simulation_id, simulation_type, unlocked_at, viewed, viewed_count) FROM stdin;
 
 
 --
 -- Data for Name: user_answer; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-COPY public.user_answer (id, "userId", "questionId", "isCorrect", "selectedAnswer", "correctAnswer", "timeSpentMs", "hintUsed", "hintLevel", "answerChanged", "answerHistory", "optionHoverTimes", "confidenceRating", "tabSwitched", "idleTimeMs", "timeToFirstClickMs", "hesitationCount", "reactionEmoji", "frustrationClicks", "selfReportedDifficulty", "sessionId", "sessionQuestionNumber", "deviceType", "networkType", "timeOfDay", "dayOfWeek", "questId", "questQuestionNumber", "pointsEarned", "streakAtTime", "answeredAt", "clientTimestamp", synced, "frustrationLevel") FROM stdin;
 ans-1772544293126-u5qkj8lye	student-001	SCI-P7-T1-MC-00647-V1	f	B	A	20302	f	\N	f	\N	\N	100	f	\N	\N	0	\N	0	\N	\N	1	\N	\N	afternoon	tuesday	\N	\N	0	\N	2026-03-03 13:24:53.126	\N	t	0
 ans-1772544514404-k2a9lm9hn	student-001	SCI-P7-T1-MC-00712-V1	t	A	A	15059	f	\N	f	\N	\N	100	f	\N	\N	0	\N	0	\N	\N	1	\N	\N	afternoon	tuesday	\N	\N	10	\N	2026-03-03 13:28:34.404	\N	t	15
 ans-1772544765595-11zec3qrn	student-001	SCI-P7-T1-MC-00793-V3	f	D	A	32155	f	\N	t	\N	\N	75	f	\N	\N	0	\N	0	\N	\N	1	\N	\N	afternoon	tuesday	\N	\N	0	\N	2026-03-03 13:32:45.595	\N	t	15
@@ -4103,7 +4089,6 @@ ans-1774876584351-hy78d3	student-001	SCI-P7-T1-MC-00142-V2	t	B	B	0	f	\N	f	\N	\N	
 -- Data for Name: user_challenge_progress; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-COPY public.user_challenge_progress (id, "userId", "challengeId", "quest1Mastery", "quest2Mastery", "quest3Mastery", "quest4Mastery", "quest5Mastery", "currentQuest", "lastPlayed", "completedAt", "createdAt") FROM stdin;
 3	student-001	4	83	75	80	86	48	6	2026-03-13 23:25:40.400009	\N	2026-03-13 15:56:22.2889
 1	student-001	1	100	88	0	0	0	3	2026-03-18 03:01:15.009818	\N	2026-03-13 03:56:29.965165
 22	student-001	2	50	0	0	0	0	2	2026-03-18 15:08:17.119501	\N	2026-03-16 16:13:32.161852
@@ -4119,28 +4104,24 @@ COPY public.user_challenge_progress (id, "userId", "challengeId", "quest1Mastery
 -- Data for Name: user_coins; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-COPY public.user_coins (user_id, coin_balance, created_at, updated_at) FROM stdin;
 
 
 --
 -- Data for Name: user_gems; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-COPY public.user_gems (user_id, overall_gems, updated_at) FROM stdin;
 
 
 --
 -- Data for Name: user_progress; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-COPY public.user_progress ("userId", "totalPoints", "currentStreak", "longestStreak", "totalQuestionsAnswered", "totalCorrect", "lastActiveDate", "currentQuestId", "createdAt", "updatedAt") FROM stdin;
 
 
 --
 -- Data for Name: user_quests; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-COPY public.user_quests (id, "userId", "questId", status, progress, "totalQuestions", mastery, "xpEarned", "startedAt", "completedAt", "lastQuestionAt") FROM stdin;
 1	student-001	1	completed	6	6	17	0	2026-03-09 03:37:25.762	2026-03-09 03:39:21.749	2026-03-09 03:39:21.748
 
 
@@ -4148,7 +4129,6 @@ COPY public.user_quests (id, "userId", "questId", status, progress, "totalQuesti
 -- Data for Name: user_sessions; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-COPY public.user_sessions ("sessionId", "userId", "currentQuestId", "questQuestions", "questResults", "questionHistory", "frustrationLevel", "masteryLevel", "sessionStart", "lastActive", "endedAt", "confidenceRating", "engagementLevel", "cognitiveLoad") FROM stdin;
 sess-1772919527213-ik4de41zv	student-001	1	["SCI-P7-T1-MC-00697-V1","SCI-P7-T1-MC-00685-V1"]	[{"questionId":"SCI-P7-T1-MC-00697-V1","correct":true,"timeSpent":20767,"hintUsed":false,"answerChanged":false,"timestamp":"2026-03-07T21:39:08.562Z"},{"questionId":"SCI-P7-T1-MC-00217-V1","correct":false,"timeSpent":13996,"hintUsed":true,"answerChanged":false,"timestamp":"2026-03-07T21:39:43.075Z"},{"questionId":"SCI-P7-T1-MC-00426-V3","correct":true,"timeSpent":12291,"hintUsed":true,"answerChanged":false,"timestamp":"2026-03-07T21:39:58.674Z"},{"questionId":"SCI-P7-T1-MC-00217-V3","correct":false,"timeSpent":13902,"hintUsed":false,"answerChanged":false,"timestamp":"2026-03-07T21:40:15.773Z"},{"questionId":"SCI-P7-T1-SM-00824","correct":false,"timeSpent":9694,"hintUsed":false,"answerChanged":false,"timestamp":"2026-03-07T21:40:28.435Z"},{"questionId":"SCI-P7-T1-MC-00685-V1","correct":false,"timeSpent":3338,"hintUsed":false,"answerChanged":false,"timestamp":"2026-03-07T21:40:34.345Z"},{"questionId":"SCI-P7-T1-MC-00264-V3","correct":false,"timeSpent":7115,"hintUsed":false,"answerChanged":false,"timestamp":"2026-03-07T21:40:44.107Z"}]	[{"questionId":"SCI-P7-T1-MC-00697-V1","timestamp":"2026-03-07T21:39:08.562Z","correct":true,"timeSpent":20767,"hintUsed":false,"answerChanged":false},{"questionId":"SCI-P7-T1-MC-00217-V1","timestamp":"2026-03-07T21:39:43.075Z","correct":false,"timeSpent":13996,"hintUsed":true,"answerChanged":false},{"questionId":"SCI-P7-T1-MC-00426-V3","timestamp":"2026-03-07T21:39:58.674Z","correct":true,"timeSpent":12291,"hintUsed":true,"answerChanged":false},{"questionId":"SCI-P7-T1-MC-00217-V3","timestamp":"2026-03-07T21:40:15.773Z","correct":false,"timeSpent":13902,"hintUsed":false,"answerChanged":false},{"questionId":"SCI-P7-T1-SM-00824","timestamp":"2026-03-07T21:40:28.435Z","correct":false,"timeSpent":9694,"hintUsed":false,"answerChanged":false},{"questionId":"SCI-P7-T1-MC-00685-V1","timestamp":"2026-03-07T21:40:34.345Z","correct":false,"timeSpent":3338,"hintUsed":false,"answerChanged":false},{"questionId":"SCI-P7-T1-MC-00264-V3","timestamp":"2026-03-07T21:40:44.107Z","correct":false,"timeSpent":7115,"hintUsed":false,"answerChanged":false}]	70	learning	2026-03-07 21:38:47.213	2026-03-07 21:40:44.469	\N	70	50	30
 test-session-1	student-001	1	\N	\N	\N	25	\N	2026-03-09 15:40:50.466678	2026-03-09 15:40:50.466678	\N	75	60	40
 
@@ -4157,7 +4137,6 @@ test-session-1	student-001	1	\N	\N	\N	25	\N	2026-03-09 15:40:50.466678	2026-03-0
 -- Data for Name: user_stats; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-COPY public.user_stats ("userId", "totalPoints", "currentStreak", "longestStreak", "lastActiveDate", "updatedAt") FROM stdin;
 student-001	0	1	1	2026-03-09	2026-03-09 15:15:10.908013
 
 
@@ -4165,7 +4144,6 @@ student-001	0	1	1	2026-03-09	2026-03-09 15:15:10.908013
 -- Data for Name: user_streaks; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-COPY public.user_streaks (user_id, current_streak, longest_streak, last_activity_date, streak_protection, streak_freeze_count) FROM stdin;
 
 
 --

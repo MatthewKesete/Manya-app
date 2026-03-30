@@ -8,72 +8,102 @@
     
     const AudioSystemInstance = {
         enabled: true,
-        correctAudioList: [],
-        correctAudioLoaded: false,
+        audioLists: {
+            correct: [],
+            wrong: [],
+            quest_complete: []
+        },
+        loaded: {
+            correct: false,
+            wrong: false,
+            quest_complete: false
+        },
         
         async init() {
             console.log('🎵 Audio system initializing...');
-            await this.loadCorrectAudios();
+            await this.loadAllAudios();
             console.log('🎵 Audio system ready');
             return this;
         },
         
-        async loadCorrectAudios() {
+        async loadAllAudios() {
+            const folders = ['correct', 'wrong', 'quest_complete'];
+            for (const folder of folders) {
+                await this.loadAudios(folder);
+            }
+        },
+        
+        async loadAudios(folder) {
             try {
-                const response = await fetch('/api/audio/correct/list');
+                const response = await fetch(`/api/audio/${folder}/list`);
                 if (response.ok) {
                     const data = await response.json();
-                    this.correctAudioList = data.files;
-                    console.log(`🎵 Loaded ${this.correctAudioList.length} correct audio files:`, this.correctAudioList);
+                    this.audioLists[folder] = data.files;
+                    if (data.files.length === 0) {
+                        console.log(`⚠️ No audio files found in ${folder} folder`);
+                    } else {
+                        console.log(`🎵 Loaded ${this.audioLists[folder].length} audio files from ${folder}:`, this.audioLists[folder]);
+                    }
                 } else {
                     throw new Error('Server returned error');
                 }
             } catch (err) {
-                console.warn('Could not load correct audio list, using fallback');
-                this.correctAudioList = ['Great.mp3', 'Excellent.mp3', 'Perfect.mp3', 'Amazing.mp3', 'Awesome.mp3'];
+                console.warn(`Could not load ${folder} audio list:`, err);
+                this.audioLists[folder] = [];
             }
-            this.correctAudioLoaded = true;
+            this.loaded[folder] = true;
         },
         
-        // Play random correct answer sound
-        async playCorrectRandom() {
-            if (!this.enabled) return;
+        // Play random sound from specified folder
+        async playRandom(folder, volume = 0.6) {
+            if (!this.enabled) return null;
             
-            if (!this.correctAudioLoaded) {
-                await this.loadCorrectAudios();
+            if (!this.loaded[folder]) {
+                await this.loadAudios(folder);
             }
             
-            if (this.correctAudioList.length === 0) {
-                return;
+            const audioList = this.audioLists[folder];
+            if (!audioList || audioList.length === 0) {
+                console.log(`⚠️ No audio files in ${folder} folder`);
+                return null;
             }
             
-            const randomIndex = Math.floor(Math.random() * this.correctAudioList.length);
-            const fileName = this.correctAudioList[randomIndex];
+            const randomIndex = Math.floor(Math.random() * audioList.length);
+            const fileName = audioList[randomIndex];
+            const word = fileName.replace('.mp3', '');
+            
+            console.log(`🎵 Playing: ${folder}/${fileName} (${word})`);
             
             try {
-                const audio = new Audio(`/multimedia_assets/audios/correct/${fileName}`);
-                audio.volume = 0.7;
+                const audio = new Audio(`/multimedia_assets/audios/${folder}/${fileName}`);
+                audio.volume = volume;
                 const playPromise = audio.play();
                 if (playPromise !== undefined) {
                     playPromise.catch(err => {
-                        console.warn(`Failed to play ${fileName}:`, err);
+                        console.warn(`Failed to play ${folder}/${fileName}:`, err);
                     });
                 }
-                return fileName.replace('.mp3', ''); // Return word for text flash
+                return word;
             } catch (err) {
-                console.warn(`Error creating audio for ${fileName}:`, err);
+                console.warn(`Error creating audio for ${folder}/${fileName}:`, err);
                 return null;
             }
         },
         
-        playWrong() {
-            try {
-                const audio = new Audio(`/multimedia_assets/audios/error-mistake.mp3`);
-                audio.volume = 0.5;
-                audio.play().catch(() => {});
-            } catch (err) {}
+        // Specific methods for each scenario
+        async playCorrect() {
+            return this.playRandom('correct', 0.7);
         },
         
+        async playWrong() {
+            return this.playRandom('wrong', 0.5);
+        },
+        
+        async playQuestComplete() {
+            return this.playRandom('quest_complete', 0.8);
+        },
+        
+        // UI Sounds
         playClick() {
             try {
                 const audio = new Audio(`/multimedia_assets/audios/ui-click.mp3`);
@@ -94,6 +124,30 @@
             try {
                 const audio = new Audio(`/multimedia_assets/audios/whoosh.mp3`);
                 audio.volume = 0.4;
+                audio.play().catch(() => {});
+            } catch (err) {}
+        },
+        
+        playGemCollect() {
+            try {
+                const audio = new Audio(`/multimedia_assets/audios/collect-points.mp3`);
+                audio.volume = 0.5;
+                audio.play().catch(() => {});
+            } catch (err) {}
+        },
+        
+        playLevelUp() {
+            try {
+                const audio = new Audio(`/multimedia_assets/audios/level-up.mp3`);
+                audio.volume = 0.7;
+                audio.play().catch(() => {});
+            } catch (err) {}
+        },
+        
+        playChestOpen() {
+            try {
+                const audio = new Audio(`/multimedia_assets/audios/chest.mp3`);
+                audio.volume = 0.6;
                 audio.play().catch(() => {});
             } catch (err) {}
         }

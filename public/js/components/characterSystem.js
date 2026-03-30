@@ -163,16 +163,16 @@
 
 onCorrect() { 
     this.speak(this.getCharacter().messages.correct, 2000);
-    if(window.MANYAAudioSystem && window.MANYAAudioSystem.playCorrect) {
-        window.MANYAAudioSystem.playCorrect();
-    }
+    //if(window.MANYAAudioSystem && window.MANYAAudioSystem.playCorrect) {
+    //    window.MANYAAudioSystem.playCorrect();
+   // }
 },
 
 onWrong() { 
     this.speak(this.getCharacter().messages.wrong, 2000);
-    if(window.MANYAAudioSystem && window.MANYAAudioSystem.playWrong) {
-        window.MANYAAudioSystem.playWrong();
-    }
+    //if(window.MANYAAudioSystem && window.MANYAAudioSystem.playWrong) {
+    //    window.MANYAAudioSystem.playWrong();
+    //}
 },
         
         onStreak(streak) {
@@ -195,9 +195,23 @@ onWrong() {
         onGemCollect(count) {
             const msg = this.getCharacter().messages.gemCollect.replace('${gems}', count);
             this.speak(msg, 2000);
-        }
+        },
+            // Add this method to CharacterSystemInstance
+onQuestComplete() {
+    const messages = {
+        manya: "Outstanding! You've mastered this quest! On to the next challenge! 🎉",
+        kiki: "Whoohoo! You did it! That was amazing! Let's celebrate! 🎊",
+        polly: "Cheep cheep! Quest complete! You're a champion! 🏆"
     };
+    this.speak(messages[this.currentCharacter] || "Quest completed! Amazing work! 🎉", 3500);
     
+    // Play celebration sound
+    if(window.MANYAAudioSystem) {
+        window.MANYAAudioSystem.playQuestComplete();
+    }
+},
+    };
+
     window.MANYACharacterSystem = CharacterSystemInstance;
     window.CharacterSystem = CharacterSystemInstance;
 })();

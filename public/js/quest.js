@@ -1,5 +1,5 @@
-// quest.js - Complete Version
-console.log('✅✅✅ QUEST.JS LOADING - FIXED VERSION ✅✅✅');
+// quest.js - Complete Version with Coin System
+console.log('✅✅✅ QUEST.JS LOADING - COMPLETE VERSION ✅✅✅');
 
 const QuestScreen = {
     questData: null,
@@ -258,413 +258,525 @@ const QuestScreen = {
         if (this.submitBtn) this.submitBtn.disabled = false;
     },
     
-async submitAnswer() {
-    console.log('🔵 submitAnswer called');
-    
-    if (!this.selectedOption || this.answerSubmitted) {
-        console.log('   Blocked - no selection or already submitted');
-        return;
-    }
-    
-    if (this.hesitationTimer) clearInterval(this.hesitationTimer);
-    
-    this.answerSubmitted = true;
-    if (this.submitBtn) this.submitBtn.disabled = true;
-    if (this.hintBtn) this.hintBtn.disabled = true;
-    
-    document.querySelectorAll('.option').forEach(opt => {
-        opt.style.pointerEvents = 'none';
-    });
-    
-    const responseTime = Date.now() - this.questionStartTime;
-    const question = this.questions[this.currentQuestionIndex];
-    const correctAnswer = this.extractCorrectLetter(question.correctAnswer);
-    const isCorrect = this.selectedOption === correctAnswer;
-    
-    console.log(`   Answer: ${this.selectedOption}, Correct: ${correctAnswer}, Result: ${isCorrect ? '✅' : '❌'}`);
-    
-    // Track rewards
-    try {
-        await this.trackEmotion(isCorrect ? 'confident' : 'frustrated', isCorrect ? 80 : 60, 'answer_submitted', responseTime);
-        await this.trackReward(isCorrect, this.hintUsed, this.currentSubject);
-        await this.updateStreak(isCorrect);
-        const coinResult = await this.updateCoins(isCorrect, this.hintUsed);
+    async submitAnswer() {
+        console.log('🔵 submitAnswer called');
         
-        // Show coin animation
-        this.showCoinAnimation(coinResult?.coinChange || 0);
-        
-    } catch (err) {
-        console.error('Error tracking rewards:', err);
-    }
-    
-    // Update UI highlighting
-    document.querySelectorAll('.option').forEach(opt => {
-        if (opt.dataset.letter === correctAnswer) {
-            opt.classList.add('correct');
-        } else if (opt.dataset.letter === this.selectedOption && !isCorrect) {
-            opt.classList.add('incorrect');
-        }
-    });
-    
-    // Store the answer
-    this.answers.push({
-        questionId: question.id,
-        selectedAnswer: this.selectedOption,
-        correctAnswer: correctAnswer,
-        isCorrect: isCorrect,
-        timeSpent: responseTime,
-        hintUsed: this.hintUsed,
-        answerChanged: this.answerChanged,
-        changeCount: this.changeCount,
-        hesitationCount: this.hesitationCount
-    });
-    
-    console.log(`   Answer stored, total answers: ${this.answers.length}`);
-    
-    // Update points display
-    const pointsSpan = document.querySelector('.points-earned');
-    if (pointsSpan) {
-        const pointsEarned = isCorrect ? (this.hintUsed ? 2 : 3) : 0;
-        const currentPoints = parseInt(pointsSpan.textContent.split(' ')[1]) || 0;
-        pointsSpan.textContent = `⭐ ${currentPoints + pointsEarned}`;
-    }
-    
-    // Update accuracy
-    const correctSoFar = this.answers.filter(a => a.isCorrect).length;
-    this.params.accuracy = (correctSoFar / this.answers.length) * 100;
-    this.updateParameterDisplays();
-    
-    // Handle based on correct/wrong
-    if (isCorrect) {
-        // CORRECT ANSWER - Double green flash, word flash, coin animation, NO modal
-        console.log('   CORRECT - Playing effects, no modal');
-        
-        // Double screen flash
-        this.showDoubleScreenFlash('correct');
-        
-        // Play random sound and get the word
-        let word = null;
-        if (window.MANYAAudioSystem) {
-            word = await window.MANYAAudioSystem.playCorrectRandom();
+        if (!this.selectedOption || this.answerSubmitted) {
+            console.log('   Blocked - no selection or already submitted');
+            return;
         }
         
-        // Show word flash
-        if (word) {
-            this.showWordFlash(word);
+        if (this.hesitationTimer) clearInterval(this.hesitationTimer);
+        
+        this.answerSubmitted = true;
+        if (this.submitBtn) this.submitBtn.disabled = true;
+        if (this.hintBtn) this.hintBtn.disabled = true;
+        
+        document.querySelectorAll('.option').forEach(opt => {
+            opt.style.pointerEvents = 'none';
+        });
+        
+        const responseTime = Date.now() - this.questionStartTime;
+        const question = this.questions[this.currentQuestionIndex];
+        const correctAnswer = this.extractCorrectLetter(question.correctAnswer);
+        const isCorrect = this.selectedOption === correctAnswer;
+        
+        console.log(`   Answer: ${this.selectedOption}, Correct: ${correctAnswer}, Result: ${isCorrect ? '✅' : '❌'}`);
+        
+        // Track rewards
+        let coinResult = null;
+        try {
+            await this.trackEmotion(isCorrect ? 'confident' : 'frustrated', isCorrect ? 80 : 60, 'answer_submitted', responseTime);
+            await this.trackReward(isCorrect, this.hintUsed, this.currentSubject);
+            await this.updateStreak(isCorrect);
+            coinResult = await this.updateCoins(isCorrect, this.hintUsed);
+            
+            // Show coin animation
+            if (coinResult && coinResult.coinChange !== undefined) {
+                this.showCoinAnimation(coinResult.coinChange);
+            }
+            
+        } catch (err) {
+            console.error('Error tracking rewards:', err);
         }
         
-        // Character reaction
-        if (window.MANYACharacterSystem) {
-            window.MANYACharacterSystem.onCorrect();
+        // Update UI highlighting
+        document.querySelectorAll('.option').forEach(opt => {
+            if (opt.dataset.letter === correctAnswer) {
+                opt.classList.add('correct');
+            } else if (opt.dataset.letter === this.selectedOption && !isCorrect) {
+                opt.classList.add('incorrect');
+            }
+        });
+        
+        // Store the answer
+        this.answers.push({
+            questionId: question.id,
+            selectedAnswer: this.selectedOption,
+            correctAnswer: correctAnswer,
+            isCorrect: isCorrect,
+            timeSpent: responseTime,
+            hintUsed: this.hintUsed,
+            answerChanged: this.answerChanged,
+            changeCount: this.changeCount,
+            hesitationCount: this.hesitationCount
+        });
+        
+        console.log(`   Answer stored, total answers: ${this.answers.length}`);
+        
+        // Update points display
+        const pointsSpan = document.querySelector('.points-earned');
+        if (pointsSpan) {
+            const pointsEarned = isCorrect ? (this.hintUsed ? 2 : 3) : 0;
+            const currentPoints = parseInt(pointsSpan.textContent.split(' ')[1]) || 0;
+            pointsSpan.textContent = `⭐ ${currentPoints + pointsEarned}`;
         }
         
-        // Auto-advance after effects
-        setTimeout(() => {
-            this.currentQuestionIndex++;
-            console.log(`   Advancing to question ${this.currentQuestionIndex + 1}`);
-            this.loadNextContent();
-        }, 1500);
+        // Update accuracy
+        const correctSoFar = this.answers.filter(a => a.isCorrect).length;
+        this.params.accuracy = (correctSoFar / this.answers.length) * 100;
+        this.updateParameterDisplays();
         
-    } else {
-        // WRONG ANSWER - Red flash, show feedback modal
-        console.log('   WRONG - Showing feedback modal');
-        
-        // Double red flash
-        this.showDoubleScreenFlash('wrong');
-        
-        // Play wrong sound
-        if (window.MANYAAudioSystem) {
-            window.MANYAAudioSystem.playWrong();
-        }
-        
-        // Character reaction
-        if (window.MANYACharacterSystem) {
-            window.MANYACharacterSystem.onWrong();
-        }
-        
-        // Show feedback modal
-        await this.showDetailedFeedbackModal(question, correctAnswer, responseTime);
-    }
-},
-
-// New method for double screen flash
-showDoubleScreenFlash(type) {
-    const existing = document.querySelector('.screen-flash-double');
-    if (existing) existing.remove();
+        // Handle based on correct/wrong
+     if (isCorrect) {
+    console.log('   CORRECT - Playing effects, no modal');
     
-    const flash = document.createElement('div');
-    flash.className = `screen-flash-double ${type}`;
-    document.body.appendChild(flash);
+    // Double screen flash
+    this.showDoubleScreenFlash('correct');
     
-    setTimeout(() => {
-        if (flash.parentNode) flash.remove();
-    }, 600);
-},
-
-// New method for word flash (like Candy Crush)
-showWordFlash(word) {
-    const existing = document.querySelector('.word-flash');
-    if (existing) existing.remove();
-    
-    const wordEl = document.createElement('div');
-    wordEl.className = 'word-flash';
-    wordEl.textContent = word.toUpperCase();
-    document.body.appendChild(wordEl);
-    
-    setTimeout(() => {
-        if (wordEl.parentNode) wordEl.remove();
-    }, 600);
-},
-
-// Updated coin animation
-showCoinAnimation(change) {
-    const animation = document.createElement('div');
-    animation.className = `coin-animation ${change > 0 ? 'gain' : 'loss'}`;
-    animation.innerHTML = change > 0 ? `+${change} 🪙` : `${change} 🪙`;
-    
-    document.body.appendChild(animation);
-    setTimeout(() => animation.remove(), 1000);
-    
+    // Play random sound and get the word (ONLY ONE AUDIO)
+    let word = null;
     if (window.MANYAAudioSystem) {
-        if (change > 0) {
-            window.MANYAAudioSystem.playCoinCollect();
-        } else if (change < 0) {
-            window.MANYAAudioSystem.playCoinDeduct();
-        }
-    }
-},
-
-// Updated feedback modal for wrong answers only
-async showDetailedFeedbackModal(question, correctAnswer, responseTime) {
-    const feedbackModal = document.createElement('div');
-    feedbackModal.className = 'feedback-card-detailed';
-    feedbackModal.style.cssText = `
-        position: fixed;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        background: white;
-        border-radius: 20px;
-        padding: 25px;
-        max-width: 450px;
-        width: 90%;
-        z-index: 20000;
-        box-shadow: 0 20px 40px rgba(0,0,0,0.3);
-    `;
-    
-    let detailedSolution = '';
-    try {
-        const response = await fetch(`/api/solution/${question.id}`);
-        if (response.ok) {
-            const data = await response.json();
-            detailedSolution = data.detailedSolution || '';
-        }
-    } catch (err) {}
-    
-    if (!detailedSolution) {
-        detailedSolution = `The correct answer is ${correctAnswer}. Review this topic to strengthen your understanding. 📚`;
+        word = await window.MANYAAudioSystem.playCorrect();
     }
     
-    feedbackModal.innerHTML = `
-        <div style="text-align: center; margin-bottom: 20px;">
-            <span style="font-size: 3em;">💪</span>
-            <h2 style="color: #f56565; margin: 10px 0;">Not quite right</h2>
-        </div>
-        <div style="background: #f7fafc; padding: 15px; border-radius: 12px; margin-bottom: 20px;">
-            <p><strong>Your answer:</strong> ${this.selectedOption} - ${this.getOptionText(question, this.selectedOption)}</p>
-            <p><strong>Correct answer:</strong> ${correctAnswer} - ${this.getOptionText(question, correctAnswer)}</p>
-        </div>
-        <div style="margin-bottom: 20px;">
-            <h4>📚 Explanation</h4>
-            <p>${detailedSolution}</p>
-        </div>
-        <div style="text-align: center;">
-            <button id="continue-btn" style="
-                background: #667eea;
-                color: white;
-                border: none;
-                padding: 12px 40px;
-                border-radius: 30px;
-                font-size: 1.1em;
-                font-weight: bold;
-                cursor: pointer;
-                transition: all 0.3s;
-            ">Continue →</button>
-        </div>
-    `;
+    // Show word flash
+    if (word) {
+        this.showWordFlash(word);
+    } else {
+        this.showWordFlash('Great');
+    }
     
-    document.body.appendChild(feedbackModal);
+    // Character reaction - WITHOUT AUDIO
+    if (window.MANYACharacterSystem && window.MANYACharacterSystem.onCorrectSilent) {
+        window.MANYACharacterSystem.onCorrectSilent();
+    } else if (window.MANYACharacterSystem) {
+        // Just show message without sound
+        window.MANYACharacterSystem.speak(window.MANYACharacterSystem.getCharacter().messages.correct, 2000);
+    }
     
-    const continueBtn = feedbackModal.querySelector('#continue-btn');
-    continueBtn.onmouseover = () => continueBtn.style.transform = 'scale(1.05)';
-    continueBtn.onmouseout = () => continueBtn.style.transform = 'scale(1)';
-    
-    continueBtn.onclick = () => {
-        feedbackModal.remove();
+    // Auto-advance after effects
+    setTimeout(() => {
         this.currentQuestionIndex++;
         console.log(`   Advancing to question ${this.currentQuestionIndex + 1}`);
         this.loadNextContent();
-    };
-},
-
-// Keep these existing methods
-async updateCoins(isCorrect, hintUsed) {
-    const userId = window.App?.currentUser || 'student-001';
+    }, 1500);
+} else {
+    console.log('   WRONG - Showing feedback modal');
     
-    try {
-        const response = await fetch('/api/coins/update', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ userId, isCorrect, hintUsed })
-        });
+    // Double red flash
+    this.showDoubleScreenFlash('wrong');
+    
+    // Play wrong sound (ONLY ONE AUDIO)
+    if (window.MANYAAudioSystem) {
+        window.MANYAAudioSystem.playWrong();
+    }
+    
+    // Character reaction - WITHOUT AUDIO
+    if (window.MANYACharacterSystem && window.MANYACharacterSystem.onWrongSilent) {
+        window.MANYACharacterSystem.onWrongSilent();
+    } else if (window.MANYACharacterSystem) {
+        window.MANYACharacterSystem.speak(window.MANYACharacterSystem.getCharacter().messages.wrong, 2000);
+    }
+    
+    // Show feedback modal
+    await this.showDetailedFeedbackModal(question, correctAnswer, responseTime);
+}
+    },
+    
+    showDoubleScreenFlash(type) {
+        const existing = document.querySelector('.screen-flash-double');
+        if (existing) existing.remove();
         
-        const data = await response.json();
-        this.updateCoinDisplay(data.newBalance);
-        return data;
-    } catch (err) {
-        console.error('Error updating coins:', err);
-        return null;
-    }
-},
-
-updateCoinDisplay(balance) {
-    const coinEl = document.getElementById('coin-balance');
-    if (coinEl) {
-        coinEl.textContent = `🪙 ${balance}`;
-    }
-},
-
-getOptionText(question, letter) {
-    return question.options?.[letter] || '';
-},
-
-async showFeedbackAndContinue(question, isCorrect, correctAnswer, responseTime) {
-    console.log('📢 showFeedbackAndContinue called');
+        const flash = document.createElement('div');
+        flash.className = `screen-flash-double ${type}`;
+        document.body.appendChild(flash);
+        
+        setTimeout(() => {
+            if (flash.parentNode) flash.remove();
+        }, 600);
+    },
     
-    // Get solution text
-    let detailedSolution = '';
-    try {
-        const response = await fetch(`/api/solution/${question.id}`);
-        if (response.ok) {
-            const data = await response.json();
-            detailedSolution = data.detailedSolution || '';
+    showWordFlash(word) {
+        const existing = document.querySelector('.word-flash');
+        if (existing) existing.remove();
+        
+        const wordEl = document.createElement('div');
+        wordEl.className = 'word-flash';
+        wordEl.textContent = word.toUpperCase();
+        document.body.appendChild(wordEl);
+        
+        setTimeout(() => {
+            if (wordEl.parentNode) wordEl.remove();
+        }, 600);
+    },
+    
+    showCoinAnimation(change) {
+        const animation = document.createElement('div');
+        animation.className = `coin-animation ${change > 0 ? 'gain' : 'loss'}`;
+        animation.innerHTML = change > 0 ? `+${change} 🪙` : `${change} 🪙`;
+        
+        document.body.appendChild(animation);
+        setTimeout(() => animation.remove(), 1000);
+        
+        if (window.MANYAAudioSystem) {
+            if (change > 0) {
+                window.MANYAAudioSystem.playCoinCollect();
+            } else if (change < 0) {
+                window.MANYAAudioSystem.playCoinDeduct();
+            }
         }
-    } catch (err) {}
+    },
     
-    if (!detailedSolution) {
-        detailedSolution = isCorrect 
-            ? "Great job! You got it right! 🎉"
-            : `The correct answer is ${correctAnswer}. Keep practicing! 📚`;
-    }
-    
-    // Create feedback modal
-    const feedbackModal = document.createElement('div');
-    feedbackModal.className = 'feedback-card-detailed';
-    feedbackModal.style.cssText = `
-        position: fixed;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        background: white;
-        border-radius: 20px;
-        padding: 25px;
-        max-width: 400px;
-        width: 90%;
-        z-index: 20000;
-        box-shadow: 0 20px 40px rgba(0,0,0,0.3);
-        text-align: center;
-    `;
-    
-    feedbackModal.innerHTML = `
-        <div style="margin-bottom: 20px;">
-            <span style="font-size: 3em;">${isCorrect ? '🎉' : '💪'}</span>
-            <h2 style="color: ${isCorrect ? '#48bb78' : '#f56565'}; margin: 10px 0;">
-                ${isCorrect ? 'Correct!' : 'Not quite right'}
-            </h2>
-        </div>
-        <div style="background: #f7fafc; padding: 15px; border-radius: 12px; margin-bottom: 20px;">
-            <p><strong>Your answer:</strong> ${this.selectedOption} - ${this.getOptionText(question, this.selectedOption)}</p>
-            <p><strong>Correct answer:</strong> ${correctAnswer} - ${this.getOptionText(question, correctAnswer)}</p>
-        </div>
-        <div style="margin-bottom: 20px;">
-            <p>${detailedSolution}</p>
-        </div>
-        <button id="continue-btn" style="
-            background: #667eea;
-            color: white;
-            border: none;
-            padding: 12px 30px;
-            border-radius: 30px;
-            font-size: 1.1em;
-            font-weight: bold;
-            cursor: pointer;
-            transition: all 0.3s;
-        ">Continue →</button>
-    `;
-    
-    document.body.appendChild(feedbackModal);
-    
-    // Add hover effect
-    const continueBtn = feedbackModal.querySelector('#continue-btn');
-    continueBtn.onmouseover = () => continueBtn.style.transform = 'scale(1.05)';
-    continueBtn.onmouseout = () => continueBtn.style.transform = 'scale(1)';
-    
-    // Handle continue click
-    continueBtn.onclick = () => {
-        console.log('🟢 Continue button clicked!');
-        feedbackModal.remove();
+    async showDetailedFeedbackModal(question, correctAnswer, responseTime) {
+        const feedbackModal = document.createElement('div');
+        feedbackModal.className = 'feedback-card-detailed';
+        feedbackModal.style.cssText = `
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            border-radius: 20px;
+            padding: 25px;
+            max-width: 450px;
+            width: 90%;
+            z-index: 20000;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+        `;
         
-        // Move to next question
-        this.currentQuestionIndex++;
-        console.log(`   Moving to question index: ${this.currentQuestionIndex}`);
-        console.log(`   Total questions: ${this.questions.length}`);
+        let detailedSolution = '';
+        try {
+            const response = await fetch(`/api/solution/${question.id}`);
+            if (response.ok) {
+                const data = await response.json();
+                detailedSolution = data.detailedSolution || '';
+            }
+        } catch (err) {}
         
-        this.loadNextContent();
-    };
+        if (!detailedSolution) {
+            detailedSolution = `The correct answer is ${correctAnswer}. Review this topic to strengthen your understanding. 📚`;
+        }
+        
+        feedbackModal.innerHTML = `
+            <div style="text-align: center; margin-bottom: 20px;">
+                <span style="font-size: 3em;">💪</span>
+                <h2 style="color: #f56565; margin: 10px 0;">Not quite right</h2>
+            </div>
+            <div style="background: #f7fafc; padding: 15px; border-radius: 12px; margin-bottom: 20px;">
+                <p><strong>Your answer:</strong> ${this.selectedOption} - ${this.getOptionText(question, this.selectedOption)}</p>
+                <p><strong>Correct answer:</strong> ${correctAnswer} - ${this.getOptionText(question, correctAnswer)}</p>
+            </div>
+            <div style="margin-bottom: 20px;">
+                <h4>📚 Explanation</h4>
+                <p>${detailedSolution}</p>
+            </div>
+            <div style="text-align: center;">
+                <button id="continue-btn" style="
+                    background: #667eea;
+                    color: white;
+                    border: none;
+                    padding: 12px 40px;
+                    border-radius: 30px;
+                    font-size: 1.1em;
+                    font-weight: bold;
+                    cursor: pointer;
+                    transition: all 0.3s;
+                ">Continue →</button>
+            </div>
+        `;
+        
+        document.body.appendChild(feedbackModal);
+        
+        const continueBtn = feedbackModal.querySelector('#continue-btn');
+        continueBtn.onmouseover = () => continueBtn.style.transform = 'scale(1.05)';
+        continueBtn.onmouseout = () => continueBtn.style.transform = 'scale(1)';
+        
+        continueBtn.onclick = () => {
+            feedbackModal.remove();
+            this.currentQuestionIndex++;
+            console.log(`   Advancing to question ${this.currentQuestionIndex + 1}`);
+            this.loadNextContent();
+        };
+    },
     
-    console.log('   Feedback modal shown, waiting for continue click');
-},
-
-// Helper method to get option text
-getOptionText(question, letter) {
-    return question.options?.[letter] || '';
-},
+    async updateCoins(isCorrect, hintUsed) {
+        const userId = window.App?.currentUser || 'student-001';
+        
+        console.log(`🪙 Updating coins for user ${userId}: isCorrect=${isCorrect}, hintUsed=${hintUsed}`);
+        
+        try {
+            const response = await fetch('/api/coins/update', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId, isCorrect, hintUsed })
+            });
+            
+            if (!response.ok) {
+                console.error(`Coin update failed: ${response.status}`);
+                return null;
+            }
+            
+            const data = await response.json();
+            console.log(`🪙 Coin update result:`, data);
+            
+            if (data && data.newBalance !== undefined) {
+                this.updateCoinDisplay(data.newBalance);
+            }
+            return data;
+        } catch (err) {
+            console.error('Error updating coins:', err);
+            return null;
+        }
+    },
+    
+    updateCoinDisplay(balance) {
+        const coinEl = document.getElementById('coin-balance');
+        if (coinEl) {
+            coinEl.textContent = `🪙 ${balance}`;
+            console.log(`💰 Coin display updated: ${balance}`);
+        } else {
+            console.warn('Coin balance element not found');
+        }
+    },
     
     getOptionText(question, letter) {
         return question.options?.[letter] || '';
     },
     
-    extractCorrectLetter(correctAnswer) {
-        if (!correctAnswer) return 'A';
-        if (correctAnswer.startsWith('Option_')) return correctAnswer.replace('Option_', '');
-        if (['A','B','C','D'].includes(correctAnswer)) return correctAnswer;
-        return 'A';
-    },
-    
-    async getHint() {
-        if (this.hintUsed || this.answerSubmitted) return;
-        
-        const question = this.questions[this.currentQuestionIndex];
+    async trackReward(isCorrect, hintUsed, subject) {
+        const userId = window.App?.currentUser || 'student-001';
         
         try {
-            const response = await fetch(`/api/hint/${question.id}`);
+            const response = await fetch('/api/gamification/award', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId, subject, isCorrect, hintUsed, context: 'answer_correct' })
+            });
             const data = await response.json();
-            
-            if (this.hintDisplay) {
-                this.hintDisplay.textContent = data.hint || "Think carefully about what you've learned!";
-                this.hintDisplay.style.display = 'block';
+            if (data.awarded && (data.awarded.subjectGems > 0 || data.awarded.overallGems > 0)) {
+                this.showRewardAnimation(data.awarded);
             }
-            
-            this.hintUsed = true;
-            if (this.hintBtn) this.hintBtn.disabled = true;
+            return data;
         } catch (err) {
-            if (this.hintDisplay) {
-                this.hintDisplay.textContent = "Try to eliminate wrong answers first!";
-                this.hintDisplay.style.display = 'block';
-            }
-            this.hintUsed = true;
-            if (this.hintBtn) this.hintBtn.disabled = true;
+            console.error('Error tracking reward:', err);
+            return null;
         }
+    },
+    
+   showRewardAnimation(awarded) {
+    if (!awarded.subjectGems && !awarded.overallGems) return;
+    
+    const animation = document.createElement('div');
+    animation.style.cssText = 'position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); pointer-events:none; z-index:10000; background:rgba(0,0,0,0.8); color:gold; padding:15px 25px; border-radius:50px; font-weight:bold; font-size:1.2em; animation:floatUp 1s ease-out forwards;';
+    animation.innerHTML = `+${awarded.subjectGems} 🎨 +${awarded.overallGems} ⭐`;
+    document.body.appendChild(animation);
+    setTimeout(() => animation.remove(), 1000);
+    
+    // Only play sound if the method exists
+    if (window.MANYAAudioSystem && window.MANYAAudioSystem.playGemCollect && awarded.subjectGems > 0) {
+        window.MANYAAudioSystem.playGemCollect();
+    }
+},
+    
+    async trackEmotion(emotion, intensity, context, responseTime) {
+        const userId = window.App?.currentUser || 'student-001';
+        try {
+            await fetch('/api/gamification/emotion', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId, emotion, intensity, context, responseTime: Math.floor(responseTime) })
+            });
+        } catch (err) {}
+    },
+    
+    async updateStreak(isCorrect) {
+        const userId = window.App?.currentUser || 'student-001';
+        try {
+            const response = await fetch('/api/gamification/streak/update', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId, isCorrect })
+            });
+            const data = await response.json();
+            if (window.MANYACharacterSystem && data.currentStreak > 0 && data.currentStreak % 3 === 0) {
+                window.MANYACharacterSystem.onStreak(data.currentStreak);
+            }
+            return data;
+        } catch (err) {
+            return null;
+        }
+    },
+    
+    async completeQuest() {
+        console.log('🏁 Completing quest...');
+        
+        const totalQuestions = this.questions.length;
+        const correctAnswers = this.answers.filter(a => a.isCorrect).length;
+        const mastery = Math.min(100, Math.max(0, Math.round((correctAnswers / totalQuestions) * 100)));
+        const isQuestPassed = mastery >= 75;
+        
+        console.log(`   Mastery: ${mastery}%, Passed: ${isQuestPassed}`);
+        
+        try {
+            await fetch('/api/quests/complete', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    userId: window.App?.currentUser || 'student-001',
+                    challengeId: this.challenge.id,
+                    questId: this.questData?.questId,
+                    mastery: mastery,
+                    answers: this.answers
+                })
+            });
+            
+            if (isQuestPassed) {
+                console.log('🎉 Quest completed! Playing celebration effects...');
+                
+                let celebrationWord = null;
+                if (window.MANYAAudioSystem && window.MANYAAudioSystem.playQuestComplete) {
+                    celebrationWord = await window.MANYAAudioSystem.playQuestComplete();
+                }
+                
+                if (celebrationWord) {
+                    this.showWordFlash(celebrationWord);
+                } else {
+                    this.showWordFlash('Complete');
+                }
+                
+                this.showDoubleScreenFlash('quest-complete');
+                this.showChestUnlockAnimation();
+                
+                if (window.MANYACharacterSystem && window.MANYACharacterSystem.onQuestComplete) {
+                    window.MANYACharacterSystem.onQuestComplete();
+                } else if (window.MANYACharacterSystem) {
+                    window.MANYACharacterSystem.speak("Quest completed! You're amazing! 🎉", 3000);
+                }
+                
+                setTimeout(() => {
+                    this.showCompletion(mastery);
+                }, 2000);
+            } else {
+                this.showCompletion(mastery);
+            }
+            
+        } catch (err) {
+            console.error('Error completing quest:', err);
+            this.exit();
+        }
+    },
+    
+    showChestUnlockAnimation() {
+        const chestAnimation = document.createElement('div');
+        chestAnimation.className = 'chest-unlock-animation';
+        chestAnimation.innerHTML = `
+            <div class="chest-unlock-content">
+                <div class="chest-icon">🎁</div>
+                <div class="chest-text">NEW CHEST UNLOCKED!</div>
+                <div class="chest-sparkles">✨ ✨ ✨</div>
+            </div>
+        `;
+        chestAnimation.style.cssText = `
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 30px 50px;
+            border-radius: 20px;
+            color: white;
+            text-align: center;
+            z-index: 20001;
+            animation: chestPop 0.5s ease-out;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+        `;
+        
+        document.body.appendChild(chestAnimation);
+        
+        setTimeout(() => {
+            chestAnimation.style.animation = 'chestFadeOut 0.5s ease-out';
+            setTimeout(() => chestAnimation.remove(), 500);
+        }, 2000);
+    },
+    
+    showCompletion(mastery) {
+        const overlay = document.querySelector('.quest-complete-overlay');
+        if (!overlay) return;
+        
+        overlay.querySelector('.mastery-score').textContent = mastery + '%';
+        overlay.querySelector('.earned-rewards').innerHTML = `<div>✨ Mastery: ${mastery}%</div><div>📊 Accuracy: ${Math.round(this.params.accuracy)}%</div>`;
+        overlay.querySelector('.continue-btn').onclick = () => {
+            overlay.style.display = 'none';
+            this.exit();
+        };
+        overlay.style.display = 'flex';
+    },
+    
+    updateParameterDisplays() {
+        const accuracyEl = document.getElementById('param-accuracy');
+        if (accuracyEl) accuracyEl.textContent = Math.round(this.params.accuracy) + '%';
+        
+        const masteryEl = document.getElementById('param-mastery');
+        if (masteryEl) masteryEl.textContent = Math.round(this.params.mastery) + '%';
+        
+        const confidenceEl = document.getElementById('param-confidence');
+        if (confidenceEl) confidenceEl.textContent = Math.round(this.params.confidence) + '%';
+        
+        const confidenceBar = document.getElementById('confidence-bar');
+        if (confidenceBar) confidenceBar.style.width = this.params.confidence + '%';
+        
+        const frustrationEl = document.getElementById('param-frustration');
+        if (frustrationEl) frustrationEl.textContent = Math.round(this.params.frustration) + '%';
+        
+        const frustrationBar = document.getElementById('frustration-bar');
+        if (frustrationBar) frustrationBar.style.width = this.params.frustration + '%';
+        
+        const hintsEl = document.getElementById('param-hints');
+        if (hintsEl) hintsEl.textContent = Math.round(this.params.hintUsage) + '%';
+        
+        const hintCount = this.answers.filter(a => a.hintUsed).length;
+        const hintCountEl = document.getElementById('hint-count');
+        if (hintCountEl) hintCountEl.textContent = `${hintCount} used`;
+    },
+    
+    startHesitationTracking() {
+        this.questionStartTime = Date.now();
+        const self = this;
+        
+        if (this.hesitationTimer) clearInterval(this.hesitationTimer);
+        
+        this.hesitationTimer = setInterval(() => {
+            const timeOnQuestion = (Date.now() - self.questionStartTime) / 1000;
+            if (timeOnQuestion > 5 && !self.answerSubmitted && !self.selectedOption) {
+                self.hesitationCount++;
+            }
+        }, 1000);
+    },
+    
+    async loadPsychologicalParams() {
+        try {
+            const response = await fetch(`/api/psychological/state/${window.App?.currentUser || 'student-001'}`);
+            const data = await response.json();
+            this.params.confidence = data.confidence || 70;
+            this.params.frustration = data.frustration || 0;
+            this.updateParameterDisplays();
+        } catch (err) {}
+    },
+    
+    handleTimeUp() {
+        console.log('⏰ TIME\'S UP!');
+        this.completeQuest();
     },
     
     async showStudySim(studySim) {
@@ -816,165 +928,37 @@ getOptionText(question, letter) {
         }, 1000);
     },
     
-    // ========== GAMIFICATION METHODS ==========
-    
-    async trackReward(isCorrect, hintUsed, subject) {
-        const userId = window.App?.currentUser || 'student-001';
+    async getHint() {
+        if (this.hintUsed || this.answerSubmitted) return;
+        
+        const question = this.questions[this.currentQuestionIndex];
         
         try {
-            const response = await fetch('/api/gamification/award', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId, subject, isCorrect, hintUsed, context: 'answer_correct' })
-            });
+            const response = await fetch(`/api/hint/${question.id}`);
             const data = await response.json();
-            if (data.awarded && (data.awarded.subjectGems > 0 || data.awarded.overallGems > 0)) {
-                this.showRewardAnimation(data.awarded);
+            
+            if (this.hintDisplay) {
+                this.hintDisplay.textContent = data.hint || "Think carefully about what you've learned!";
+                this.hintDisplay.style.display = 'block';
             }
-            return data;
+            
+            this.hintUsed = true;
+            if (this.hintBtn) this.hintBtn.disabled = true;
         } catch (err) {
-            console.error('Error tracking reward:', err);
-            return null;
-        }
-    },
-    
-    showRewardAnimation(awarded) {
-        if (!awarded.subjectGems && !awarded.overallGems) return;
-        
-        const animation = document.createElement('div');
-        animation.style.cssText = 'position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); pointer-events:none; z-index:10000; background:rgba(0,0,0,0.8); color:gold; padding:15px 25px; border-radius:50px; font-weight:bold; font-size:1.2em; animation:floatUp 1s ease-out forwards;';
-        animation.innerHTML = `+${awarded.subjectGems} 🎨 +${awarded.overallGems} ⭐`;
-        document.body.appendChild(animation);
-        setTimeout(() => animation.remove(), 1000);
-        
-        if (window.MANYAAudioSystem && awarded.subjectGems > 0) {
-            window.MANYAAudioSystem.playGemCollect();
-        }
-    },
-    
-    async trackEmotion(emotion, intensity, context, responseTime) {
-        const userId = window.App?.currentUser || 'student-001';
-        try {
-            await fetch('/api/gamification/emotion', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId, emotion, intensity, context, responseTime: Math.floor(responseTime) })
-            });
-        } catch (err) {}
-    },
-    
-    async updateStreak(isCorrect) {
-        const userId = window.App?.currentUser || 'student-001';
-        try {
-            const response = await fetch('/api/gamification/streak/update', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId, isCorrect })
-            });
-            const data = await response.json();
-            if (window.MANYACharacterSystem && data.currentStreak > 0 && data.currentStreak % 3 === 0) {
-                window.MANYACharacterSystem.onStreak(data.currentStreak);
+            if (this.hintDisplay) {
+                this.hintDisplay.textContent = "Try to eliminate wrong answers first!";
+                this.hintDisplay.style.display = 'block';
             }
-            return data;
-        } catch (err) {
-            return null;
+            this.hintUsed = true;
+            if (this.hintBtn) this.hintBtn.disabled = true;
         }
     },
     
-    async completeQuest() {
-        console.log('🏁 Completing quest...');
-        
-        const totalQuestions = this.questions.length;
-        const correctAnswers = this.answers.filter(a => a.isCorrect).length;
-        let mastery = (correctAnswers / totalQuestions) * 100;
-        mastery = Math.min(100, Math.max(0, Math.round(mastery)));
-        
-        try {
-            await fetch('/api/quests/complete', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    userId: window.App?.currentUser || 'student-001',
-                    challengeId: this.challenge.id,
-                    questId: this.questData?.questId,
-                    mastery: mastery,
-                    answers: this.answers
-                })
-            });
-            this.showCompletion(mastery);
-        } catch (err) {
-            console.error('Error completing quest:', err);
-            this.exit();
-        }
-    },
-    
-    showCompletion(mastery) {
-        const overlay = document.querySelector('.quest-complete-overlay');
-        if (!overlay) return;
-        
-        overlay.querySelector('.mastery-score').textContent = mastery + '%';
-        overlay.querySelector('.earned-rewards').innerHTML = `<div>✨ Mastery: ${mastery}%</div><div>📊 Accuracy: ${Math.round(this.params.accuracy)}%</div>`;
-        overlay.querySelector('.continue-btn').onclick = () => {
-            overlay.style.display = 'none';
-            this.exit();
-        };
-        overlay.style.display = 'flex';
-    },
-    
-    updateParameterDisplays() {
-        const accuracyEl = document.getElementById('param-accuracy');
-        if (accuracyEl) accuracyEl.textContent = Math.round(this.params.accuracy) + '%';
-        
-        const masteryEl = document.getElementById('param-mastery');
-        if (masteryEl) masteryEl.textContent = Math.round(this.params.mastery) + '%';
-        
-        const confidenceEl = document.getElementById('param-confidence');
-        if (confidenceEl) confidenceEl.textContent = Math.round(this.params.confidence) + '%';
-        
-        const confidenceBar = document.getElementById('confidence-bar');
-        if (confidenceBar) confidenceBar.style.width = this.params.confidence + '%';
-        
-        const frustrationEl = document.getElementById('param-frustration');
-        if (frustrationEl) frustrationEl.textContent = Math.round(this.params.frustration) + '%';
-        
-        const frustrationBar = document.getElementById('frustration-bar');
-        if (frustrationBar) frustrationBar.style.width = this.params.frustration + '%';
-        
-        const hintsEl = document.getElementById('param-hints');
-        if (hintsEl) hintsEl.textContent = Math.round(this.params.hintUsage) + '%';
-        
-        const hintCount = this.answers.filter(a => a.hintUsed).length;
-        const hintCountEl = document.getElementById('hint-count');
-        if (hintCountEl) hintCountEl.textContent = `${hintCount} used`;
-    },
-    
-    startHesitationTracking() {
-        this.questionStartTime = Date.now();
-        const self = this;
-        
-        if (this.hesitationTimer) clearInterval(this.hesitationTimer);
-        
-        this.hesitationTimer = setInterval(() => {
-            const timeOnQuestion = (Date.now() - self.questionStartTime) / 1000;
-            if (timeOnQuestion > 5 && !self.answerSubmitted && !self.selectedOption) {
-                self.hesitationCount++;
-            }
-        }, 1000);
-    },
-    
-    async loadPsychologicalParams() {
-        try {
-            const response = await fetch(`/api/psychological/state/${window.App?.currentUser || 'student-001'}`);
-            const data = await response.json();
-            this.params.confidence = data.confidence || 70;
-            this.params.frustration = data.frustration || 0;
-            this.updateParameterDisplays();
-        } catch (err) {}
-    },
-    
-    handleTimeUp() {
-        console.log('⏰ TIME\'S UP!');
-        this.completeQuest();
+    extractCorrectLetter(correctAnswer) {
+        if (!correctAnswer) return 'A';
+        if (correctAnswer.startsWith('Option_')) return correctAnswer.replace('Option_', '');
+        if (['A','B','C','D'].includes(correctAnswer)) return correctAnswer;
+        return 'A';
     },
     
     loadScript(src) {
@@ -989,97 +973,7 @@ getOptionText(question, letter) {
     
     exit() {
         if (this.onComplete) this.onComplete();
-    },
-    // Add to QuestScreen object
-
-// Screen flash effect
-showScreenFlash(type) {
-    // Remove existing flash
-    const existing = document.querySelector('.screen-flash');
-    if (existing) existing.remove();
-    
-    // Create flash element
-    const flash = document.createElement('div');
-    flash.className = `screen-flash ${type}`;
-    document.body.appendChild(flash);
-    
-    // Add shake effect for wrong answers
-    if (type === 'wrong') {
-        document.body.classList.add('screen-shake');
-        setTimeout(() => document.body.classList.remove('screen-shake'), 300);
     }
-    
-    // Remove flash after animation
-    setTimeout(() => {
-        if (flash.parentNode) flash.remove();
-    }, 300);
-},
-
-// Update coin tracking in submitAnswer
-async updateCoins(isCorrect, hintUsed) {
-    const userId = window.App?.currentUser || 'student-001';
-    
-    try {
-        const response = await fetch('/api/coins/update', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ userId, isCorrect, hintUsed })
-        });
-        
-        const data = await response.json();
-        
-        // Show coin animation
-        this.showCoinAnimation(data.coinChange);
-        
-        // Update coin display
-        this.updateCoinDisplay(data.newBalance);
-        
-        return data;
-    } catch (err) {
-        console.error('Error updating coins:', err);
-        return null;
-    }
-},
-
-// Show coin collection/deduction animation
-showCoinAnimation(change) {
-    const animation = document.createElement('div');
-    animation.className = `coin-animation ${change > 0 ? 'gain' : 'loss'}`;
-    animation.innerHTML = change > 0 ? `+${change} 🪙` : `${change} 🪙`;
-    animation.style.cssText = `
-        position: fixed;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        font-size: 2em;
-        font-weight: bold;
-        color: ${change > 0 ? '#fbbf24' : '#ef4444'};
-        text-shadow: 0 2px 10px rgba(0,0,0,0.3);
-        pointer-events: none;
-        z-index: 10001;
-        animation: coinFloat 1s ease-out forwards;
-    `;
-    
-    document.body.appendChild(animation);
-    setTimeout(() => animation.remove(), 1000);
-    
-    // Play sound
-    if (window.MANYAAudioSystem) {
-        if (change > 0) {
-            window.MANYAAudioSystem.playCoinCollect();
-        } else {
-            window.MANYAAudioSystem.playCoinDeduct();
-        }
-    }
-},
-
-// Update coin display in UI
-updateCoinDisplay(balance) {
-    const coinEl = document.getElementById('coin-balance');
-    if (coinEl) {
-        coinEl.textContent = `🪙 ${balance}`;
-    }
-}
 };
 
 window.QuestScreen = QuestScreen;

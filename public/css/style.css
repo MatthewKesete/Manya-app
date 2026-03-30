@@ -2290,3 +2290,47 @@ model-viewer {
         transform: translate(-50%, -150px) scale(0.8);
     }
 }
+/* Quest Complete Animation */
+.chest-unlock-animation {
+    animation: chestPop 0.5s ease-out;
+}
+
+@keyframes chestPop {
+    0% {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(0.3);
+    }
+    50% {
+        transform: translate(-50%, -50%) scale(1.1);
+    }
+    100% {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1);
+    }
+}
+
+@keyframes chestGlow {
+    0%, 100% {
+        box-shadow: 0 0 20px rgba(102, 126, 234, 0.5);
+    }
+    50% {
+        box-shadow: 0 0 40px rgba(102, 126, 234, 0.8), 0 0 60px rgba(255, 215, 0, 0.5);
+    }
+}
+
+@keyframes chestFadeOut {
+    from {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1);
+    }
+    to {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(0.8);
+    }
+}
+
+/* Screen Flash for Quest Complete */
+.screen-flash-double.quest-complete {
+    background: linear-gradient(135deg, rgba(255, 215, 0, 0.4), rgba(102, 126, 234, 0.4));
+    box-shadow: 0 0 100px rgba(255, 215, 0, 0.8);
+}
