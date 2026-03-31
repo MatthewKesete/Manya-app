@@ -42,7 +42,7 @@
                     if (data.files.length === 0) {
                         console.log(`⚠️ No audio files found in ${folder} folder`);
                     } else {
-                        console.log(`🎵 Loaded ${this.audioLists[folder].length} audio files from ${folder}:`, this.audioLists[folder]);
+                        console.log(`🎵 Loaded ${this.audioLists[folder].length} audio files from ${folder}`);
                     }
                 } else {
                     throw new Error('Server returned error');
@@ -54,17 +54,17 @@
             this.loaded[folder] = true;
         },
         
-        // Play random sound from specified folder
-        async playRandom(folder, volume = 0.6) {
+        // Play random sound from correct folder
+        async playCorrect() {
             if (!this.enabled) return null;
             
-            if (!this.loaded[folder]) {
-                await this.loadAudios(folder);
+            if (!this.loaded.correct) {
+                await this.loadAudios('correct');
             }
             
-            const audioList = this.audioLists[folder];
+            const audioList = this.audioLists.correct;
             if (!audioList || audioList.length === 0) {
-                console.log(`⚠️ No audio files in ${folder} folder`);
+                console.log('⚠️ No correct audio files found');
                 return null;
             }
             
@@ -72,35 +72,74 @@
             const fileName = audioList[randomIndex];
             const word = fileName.replace('.mp3', '');
             
-            console.log(`🎵 Playing: ${folder}/${fileName} (${word})`);
+            console.log(`🎵 Playing correct: ${fileName} (${word})`);
             
             try {
-                const audio = new Audio(`/multimedia_assets/audios/${folder}/${fileName}`);
-                audio.volume = volume;
+                const audio = new Audio(`/multimedia_assets/audios/correct/${fileName}`);
+                audio.volume = 0.7;
                 const playPromise = audio.play();
                 if (playPromise !== undefined) {
                     playPromise.catch(err => {
-                        console.warn(`Failed to play ${folder}/${fileName}:`, err);
+                        console.warn(`Failed to play ${fileName}:`, err);
                     });
                 }
                 return word;
             } catch (err) {
-                console.warn(`Error creating audio for ${folder}/${fileName}:`, err);
+                console.warn(`Error playing correct audio:`, err);
                 return null;
             }
         },
         
-        // Specific methods for each scenario
-        async playCorrect() {
-            return this.playRandom('correct', 0.7);
+        // Play single error sound for wrong answers
+        playWrong() {
+            if (!this.enabled) return;
+            
+            try {
+                const audio = new Audio(`/multimedia_assets/audios/error-mistake.mp3`);
+                audio.volume = 0.5;
+                audio.play().catch(err => {
+                    console.warn('Failed to play error-mistake.mp3:', err);
+                });
+                console.log('🎵 Playing wrong: error-mistake.mp3');
+            } catch (err) {
+                console.warn('Error playing wrong audio:', err);
+            }
         },
         
-        async playWrong() {
-            return this.playRandom('wrong', 0.5);
-        },
-        
+        // Play random sound from quest_complete folder
         async playQuestComplete() {
-            return this.playRandom('quest_complete', 0.8);
+            if (!this.enabled) return null;
+            
+            if (!this.loaded.quest_complete) {
+                await this.loadAudios('quest_complete');
+            }
+            
+            const audioList = this.audioLists.quest_complete;
+            if (!audioList || audioList.length === 0) {
+                console.log('⚠️ No quest_complete audio files found');
+                return null;
+            }
+            
+            const randomIndex = Math.floor(Math.random() * audioList.length);
+            const fileName = audioList[randomIndex];
+            const word = fileName.replace('.mp3', '');
+            
+            console.log(`🎵 Playing quest_complete: ${fileName} (${word})`);
+            
+            try {
+                const audio = new Audio(`/multimedia_assets/audios/quest_complete/${fileName}`);
+                audio.volume = 0.8;
+                const playPromise = audio.play();
+                if (playPromise !== undefined) {
+                    playPromise.catch(err => {
+                        console.warn(`Failed to play ${fileName}:`, err);
+                    });
+                }
+                return word;
+            } catch (err) {
+                console.warn(`Error playing quest_complete audio:`, err);
+                return null;
+            }
         },
         
         // UI Sounds
@@ -132,22 +171,6 @@
             try {
                 const audio = new Audio(`/multimedia_assets/audios/collect-points.mp3`);
                 audio.volume = 0.5;
-                audio.play().catch(() => {});
-            } catch (err) {}
-        },
-        
-        playLevelUp() {
-            try {
-                const audio = new Audio(`/multimedia_assets/audios/level-up.mp3`);
-                audio.volume = 0.7;
-                audio.play().catch(() => {});
-            } catch (err) {}
-        },
-        
-        playChestOpen() {
-            try {
-                const audio = new Audio(`/multimedia_assets/audios/chest.mp3`);
-                audio.volume = 0.6;
                 audio.play().catch(() => {});
             } catch (err) {}
         }

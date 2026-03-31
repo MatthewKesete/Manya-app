@@ -45,6 +45,7 @@ const QuestScreen = {
         frustration: 0,
         hintUsage: 0,
         hesitationRate: 0
+        
     },
     
     init(questData, challenge, onComplete) {
@@ -372,40 +373,50 @@ const QuestScreen = {
         this.loadNextContent();
     }, 1500);
 } else {
-    console.log('   WRONG - Showing feedback modal');
+    console.log('   WRONG - Growth Mindset Feedback');
     
-    // Double red flash
+    // Gentle gold glow (warm, not punishing)
     this.showDoubleScreenFlash('wrong');
     
-    // Play wrong sound (ONLY ONE AUDIO)
-    if (window.MANYAAudioSystem) {
-        window.MANYAAudioSystem.playWrong();
+    // Gently highlight the correct answer (reinforces learning)
+    document.querySelectorAll('.option').forEach(opt => {
+        if (opt.dataset.letter === correctAnswer) {
+            opt.classList.add('gentle-highlight');
+        }
+    });
+    
+    // Growth mindset message (center screen)
+    this.showGrowthMindsetMessage();
+    
+    // Character offers encouragement (no audio)
+    if (window.MANYACharacterSystem) {
+        const growthMessages = [
+            "Mistakes help us grow! Let's see the correct answer. 🌱",
+            "That's how we learn! Check this out. 📚",
+            "Every step counts! Here's what we need to know. 💪",
+            "Great effort! Let's remember this one. 🧠"
+        ];
+        const randomMsg = growthMessages[Math.floor(Math.random() * growthMessages.length)];
+        window.MANYACharacterSystem.speak(randomMsg, 2500);
     }
     
-    // Character reaction - WITHOUT AUDIO
-    if (window.MANYACharacterSystem && window.MANYACharacterSystem.onWrongSilent) {
-        window.MANYACharacterSystem.onWrongSilent();
-    } else if (window.MANYACharacterSystem) {
-        window.MANYACharacterSystem.speak(window.MANYACharacterSystem.getCharacter().messages.wrong, 2000);
-    }
-    
-    // Show feedback modal
-    await this.showDetailedFeedbackModal(question, correctAnswer, responseTime);
+    // Show learning moment modal
+    await this.showLearningModal(question, correctAnswer, responseTime);
 }
     },
     
     showDoubleScreenFlash(type) {
-        const existing = document.querySelector('.screen-flash-double');
-        if (existing) existing.remove();
-        
-        const flash = document.createElement('div');
-        flash.className = `screen-flash-double ${type}`;
-        document.body.appendChild(flash);
-        
-        setTimeout(() => {
-            if (flash.parentNode) flash.remove();
-        }, 600);
-    },
+    const existing = document.querySelector('.screen-flash');
+    if (existing) existing.remove();
+    
+    const flash = document.createElement('div');
+    flash.className = `screen-flash ${type}`;
+    document.body.appendChild(flash);
+    
+    setTimeout(() => {
+        if (flash.parentNode) flash.remove();
+    }, 800);
+},
     
     showWordFlash(word) {
         const existing = document.querySelector('.word-flash');
@@ -438,77 +449,87 @@ const QuestScreen = {
         }
     },
     
-    async showDetailedFeedbackModal(question, correctAnswer, responseTime) {
-        const feedbackModal = document.createElement('div');
-        feedbackModal.className = 'feedback-card-detailed';
-        feedbackModal.style.cssText = `
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: white;
-            border-radius: 20px;
-            padding: 25px;
-            max-width: 450px;
-            width: 90%;
-            z-index: 20000;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
-        `;
-        
-        let detailedSolution = '';
-        try {
-            const response = await fetch(`/api/solution/${question.id}`);
-            if (response.ok) {
-                const data = await response.json();
-                detailedSolution = data.detailedSolution || '';
-            }
-        } catch (err) {}
-        
-        if (!detailedSolution) {
-            detailedSolution = `The correct answer is ${correctAnswer}. Review this topic to strengthen your understanding. 📚`;
+async showEnhancedFeedbackModal(question, correctAnswer, responseTime) {
+    const feedbackModal = document.createElement('div');
+    feedbackModal.className = 'feedback-card-detailed';
+    feedbackModal.style.cssText = `
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: white;
+        border-radius: 24px;
+        padding: 28px;
+        max-width: 420px;
+        width: 90%;
+        z-index: 20000;
+        box-shadow: 0 20px 35px -12px rgba(0, 0, 0, 0.2);
+        border: 2px solid #48bb78;
+    `;
+    
+    let detailedSolution = '';
+    try {
+        const response = await fetch(`/api/solution/${question.id}`);
+        if (response.ok) {
+            const data = await response.json();
+            detailedSolution = data.detailedSolution || '';
         }
+    } catch (err) {}
+    
+    if (!detailedSolution) {
+        detailedSolution = `The correct answer is ${correctAnswer}. ${this.getOptionText(question, correctAnswer)}`;
+    }
+    
+    feedbackModal.innerHTML = `
+        <div style="text-align: center; margin-bottom: 20px;">
+            <div style="font-size: 2.8rem;">💪</div>
+            <h2 style="color: #48bb78; margin: 8px 0 4px; font-size: 1.5rem; font-weight: 600;">Learning Moment</h2>
+        </div>
         
-        feedbackModal.innerHTML = `
-            <div style="text-align: center; margin-bottom: 20px;">
-                <span style="font-size: 3em;">💪</span>
-                <h2 style="color: #f56565; margin: 10px 0;">Not quite right</h2>
-            </div>
-            <div style="background: #f7fafc; padding: 15px; border-radius: 12px; margin-bottom: 20px;">
-                <p><strong>Your answer:</strong> ${this.selectedOption} - ${this.getOptionText(question, this.selectedOption)}</p>
-                <p><strong>Correct answer:</strong> ${correctAnswer} - ${this.getOptionText(question, correctAnswer)}</p>
-            </div>
-            <div style="margin-bottom: 20px;">
-                <h4>📚 Explanation</h4>
-                <p>${detailedSolution}</p>
-            </div>
-            <div style="text-align: center;">
-                <button id="continue-btn" style="
-                    background: #667eea;
-                    color: white;
-                    border: none;
-                    padding: 12px 40px;
-                    border-radius: 30px;
-                    font-size: 1.1em;
-                    font-weight: bold;
-                    cursor: pointer;
-                    transition: all 0.3s;
-                ">Continue →</button>
-            </div>
-        `;
+        <div style="background: #fef9e7; padding: 16px; border-radius: 16px; margin-bottom: 20px;">
+            <p style="margin-bottom: 8px;">
+                <span style="font-weight: 500;">Your answer:</span> 
+                <span style="color: #f97316;">${this.selectedOption} - ${this.getOptionText(question, this.selectedOption)}</span>
+            </p>
+            <p>
+                <span style="font-weight: 500;">Correct:</span> 
+                <span style="color: #48bb78; font-weight: 500;">✓ ${correctAnswer} - ${this.getOptionText(question, correctAnswer)}</span>
+            </p>
+        </div>
         
-        document.body.appendChild(feedbackModal);
+        <div style="background: #f8fafc; padding: 16px; border-radius: 16px; margin-bottom: 24px;">
+            <p style="color: #334155; line-height: 1.5;">${detailedSolution}</p>
+        </div>
         
-        const continueBtn = feedbackModal.querySelector('#continue-btn');
-        continueBtn.onmouseover = () => continueBtn.style.transform = 'scale(1.05)';
-        continueBtn.onmouseout = () => continueBtn.style.transform = 'scale(1)';
-        
-        continueBtn.onclick = () => {
-            feedbackModal.remove();
-            this.currentQuestionIndex++;
-            console.log(`   Advancing to question ${this.currentQuestionIndex + 1}`);
-            this.loadNextContent();
-        };
-    },
+        <button id="continue-btn" style="
+            width: 100%;
+            background: #48bb78;
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 40px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        ">Continue →</button>
+    `;
+    
+    document.body.appendChild(feedbackModal);
+    
+    const continueBtn = feedbackModal.querySelector('#continue-btn');
+    continueBtn.onmouseover = () => continueBtn.style.background = '#38a169';
+    continueBtn.onmouseout = () => continueBtn.style.background = '#48bb78';
+    
+    continueBtn.onclick = () => {
+        feedbackModal.remove();
+        document.querySelectorAll('.option.gentle-highlight').forEach(opt => {
+            opt.classList.remove('gentle-highlight');
+        });
+        this.currentQuestionIndex++;
+        this.loadNextContent();
+    };
+},
     
     async updateCoins(isCorrect, hintUsed) {
         const userId = window.App?.currentUser || 'student-001';
@@ -973,7 +994,210 @@ const QuestScreen = {
     
     exit() {
         if (this.onComplete) this.onComplete();
+    },
+    // Show random encouragement message at bottom
+showEncouragementMessage() {
+    const messages = [
+        "We learn from mistakes!",
+        "It's in our memory now!",
+        "We're learning fast!",
+        "We keep going!",
+        "We move to the next one!",
+        "We won't forget this!",
+        "Forget the mistake, Learn the lesson!",
+        "That's how we learn!",
+        "We'll remember it now!",
+        "Don't worry, we got this!",
+        "We're building our brain!",
+        "Don't be afraid of mistakes!",
+        "Close one!",
+        "Keep going!",
+        "Lesson noted!",
+        "Next round!",
+        "We move!",
+        "Learning mode!",
+        "Strong try!",
+        "Forward!"
+    ];
+    
+    const message = messages[Math.floor(Math.random() * messages.length)];
+    
+    const msgContainer = document.createElement('div');
+    msgContainer.className = 'motivational-message';
+    msgContainer.innerHTML = `<div class="motivational-text">${message}</div>`;
+    document.body.appendChild(msgContainer);
+    
+    setTimeout(() => {
+        msgContainer.classList.add('fade-out');
+        setTimeout(() => msgContainer.remove(), 300);
+    }, 1800);
+},
+showGrowthMindsetMessage() {
+    const messages = [
+        "🌱 We grow from this!",
+        "📚 That's how we learn!",
+        "💪 Every step counts!",
+        "🧠 Building knowledge!",
+        "✨ Learning in progress!",
+        "🎯 Closer every time!",
+        "🌟 Great effort!",
+        "💡 Now we know!",
+        "🚀 Forward we go!",
+        "⭐ Progress, not perfection!"
+    ];
+    
+    const message = messages[Math.floor(Math.random() * messages.length)];
+    
+    const msgContainer = document.createElement('div');
+    msgContainer.className = 'growth-message';
+    msgContainer.innerHTML = `<div class="growth-text">${message}</div>`;
+    msgContainer.style.cssText = `
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: rgba(0, 0, 0, 0.75);
+        backdrop-filter: blur(8px);
+        padding: 16px 32px;
+        border-radius: 60px;
+        z-index: 20002;
+        animation: growthPop 0.4s ease-out forwards;
+    `;
+    
+    const style = document.createElement('style');
+    style.textContent = `
+        .growth-text {
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: #fbbf24;
+            letter-spacing: -0.3px;
+            white-space: nowrap;
+        }
+        @keyframes growthPop {
+            0% {
+                opacity: 0;
+                transform: translate(-50%, -50%) scale(0.8);
+            }
+            100% {
+                opacity: 1;
+                transform: translate(-50%, -50%) scale(1);
+            }
+        }
+    `;
+    document.head.appendChild(style);
+    
+    document.body.appendChild(msgContainer);
+    
+    setTimeout(() => {
+        msgContainer.style.animation = 'fadeOut 0.3s ease-out forwards';
+        setTimeout(() => msgContainer.remove(), 300);
+    }, 1800);
+},
+async showLearningModal(question, correctAnswer, responseTime) {
+    const modal = document.createElement('div');
+    modal.className = 'learning-modal';
+    modal.style.cssText = `
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: white;
+        border-radius: 24px;
+        padding: 28px;
+        max-width: 400px;
+        width: 90%;
+        z-index: 20000;
+        box-shadow: 0 20px 35px -12px rgba(0, 0, 0, 0.2);
+        border-top: 4px solid #fbbf24;
+        animation: modalRise 0.3s ease-out;
+    `;
+    
+    let detailedSolution = '';
+    try {
+        const response = await fetch(`/api/solution/${question.id}`);
+        if (response.ok) {
+            const data = await response.json();
+            detailedSolution = data.detailedSolution || '';
+        }
+    } catch (err) {}
+    
+    if (!detailedSolution) {
+        detailedSolution = `The correct answer is ${correctAnswer}. ${this.getOptionText(question, correctAnswer)}`;
     }
+    
+    modal.innerHTML = `
+        <div style="text-align: center; margin-bottom: 20px;">
+            <div style="font-size: 2.5rem;">📚</div>
+            <h2 style="color: #fbbf24; margin: 8px 0 4px; font-size: 1.4rem; font-weight: 600;">Learning Moment</h2>
+        </div>
+        
+        <div style="background: #fef9e7; padding: 16px; border-radius: 16px; margin-bottom: 20px;">
+            <p style="margin-bottom: 8px; color: #92400e;">
+                <span style="font-weight: 500;">You chose:</span> 
+                <span>${this.selectedOption} - ${this.getOptionText(question, this.selectedOption)}</span>
+            </p>
+            <p style="color: #2b6e3c;">
+                <span style="font-weight: 500;">Remember:</span> 
+                <span style="font-weight: 500;">✓ ${correctAnswer} - ${this.getOptionText(question, correctAnswer)}</span>
+            </p>
+        </div>
+        
+        <div style="background: #f8fafc; padding: 16px; border-radius: 16px; margin-bottom: 24px;">
+            <p style="color: #334155; line-height: 1.5; font-size: 0.95rem;">${detailedSolution}</p>
+        </div>
+        
+        <button id="continue-learning" style="
+            width: 100%;
+            background: #fbbf24;
+            color: #78350f;
+            border: none;
+            padding: 12px;
+            border-radius: 40px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        ">Continue Learning →</button>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    const continueBtn = modal.querySelector('#continue-learning');
+    continueBtn.onmouseover = () => continueBtn.style.background = '#f59e0b';
+    continueBtn.onmouseout = () => continueBtn.style.background = '#fbbf24';
+    
+    continueBtn.onclick = () => {
+        modal.remove();
+        document.querySelectorAll('.option.gentle-highlight').forEach(opt => {
+            opt.classList.remove('gentle-highlight');
+        });
+        this.currentQuestionIndex++;
+        this.loadNextContent();
+    };
+}
+
+// Add modal animation CSS
+const modalStyle = document.createElement('style');
+modalStyle.textContent = `
+    @keyframes modalRise {
+        from {
+            opacity: 0;
+            transform: translate(-50%, -45%);
+        }
+        to {
+            opacity: 1;
+            transform: translate(-50%, -50%);
+        }
+    }
+    @keyframes fadeOut {
+        to {
+            opacity: 0;
+            transform: translate(-50%, -50%) scale(0.95);
+        }
+    }
+`;
+document.head.appendChild(modalStyle);
+
 };
 
 window.QuestScreen = QuestScreen;
