@@ -363,62 +363,84 @@ const QuestScreen = {
     },
     
     // ========== Complete Quest ==========
-    async completeQuest() {
-        console.log('🏁 Completing quest...');
+async completeQuest() {
+    console.log('🏁 Completing quest...');
+    
+    const totalQuestions = this.questions.length;
+    const correctAnswers = this.answers.filter(a => a.isCorrect).length;
+    const mastery = Math.min(100, Math.max(0, Math.round((correctAnswers / totalQuestions) * 100)));
+    const isQuestPassed = mastery >= 75;
+    
+    console.log(`   Mastery: ${mastery}%, Passed: ${isQuestPassed}`);
+    
+    try {
+        await fetch('/api/quests/complete', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                userId: window.App?.currentUser || 'student-001',
+                challengeId: this.challenge.id,
+                questId: this.questData?.questId,
+                mastery: mastery,
+                answers: this.answers
+            })
+        });
         
-        const totalQuestions = this.questions.length;
-        const correctAnswers = this.answers.filter(a => a.isCorrect).length;
-        const mastery = Math.min(100, Math.max(0, Math.round((correctAnswers / totalQuestions) * 100)));
-        const isQuestPassed = mastery >= 75;
-        
-        console.log(`   Mastery: ${mastery}%, Passed: ${isQuestPassed}`);
-        
-        try {
-            await fetch('/api/quests/complete', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    userId: window.App?.currentUser || 'student-001',
-                    challengeId: this.challenge.id,
-                    questId: this.questData?.questId,
-                    mastery: mastery,
-                    answers: this.answers
-                })
-            });
+        if (isQuestPassed) {
+            console.log('🎉 Quest completed! Playing celebration effects...');
             
-            if (isQuestPassed) {
-                console.log('🎉 Quest completed! Playing celebration effects...');
-                
-                let celebrationWord = null;
-                if (window.MANYAAudioSystem && window.MANYAAudioSystem.playQuestComplete) {
-                    celebrationWord = await window.MANYAAudioSystem.playQuestComplete();
-                }
-                
-                if (celebrationWord) {
-                    this.showWordFlash(celebrationWord);
-                } else {
-                    this.showWordFlash('Complete');
-                }
-                
-                this.showDoubleScreenFlash('quest-complete');
-                this.showChestUnlockAnimation();
-                
-                if (window.MANYACharacterSystem) {
-                    window.MANYACharacterSystem.speak("Quest completed! You're amazing! 🎉", 3000);
-                }
-                
-                setTimeout(() => {
-                    this.showCompletion(mastery);
-                }, 2000);
-            } else {
-                this.showCompletion(mastery);
+            // Play quest complete sound
+            let celebrationWord = null;
+            if (window.MANYAAudioSystem && window.MANYAAudioSystem.playQuestComplete) {
+                celebrationWord = await window.MANYAAudioSystem.playQuestComplete();
             }
             
-        } catch (err) {
-            console.error('Error completing quest:', err);
-            this.exit();
+            // Play additional fanfare trumpet (in addition to random sound)
+            if (window.MANYAAudioSystem) {
+                try {
+                    const fanfare = new Audio('/multimedia_assets/audios/fanfare-trumpets.mp3');
+                    fanfare.volume = 0.7;
+                    fanfare.play().catch(() => {});
+                } catch (err) {
+                    console.log('Fanfare play failed:', err);
+                }
+            }
+            
+            // Show word flash
+            if (celebrationWord) {
+                this.showWordFlash(celebrationWord);
+            } else {
+                this.showWordFlash('Complete');
+            }
+            
+            // Show double screen flash
+            this.showDoubleScreenFlash('quest-complete');
+            
+            // Show chest unlock animation
+            this.showChestUnlockAnimation();
+            
+            // ADD CONFETTI AND FIREWORKS CELEBRATION
+            if (window.ConfettiService) {
+                window.ConfettiService.questComplete();
+            }
+            
+            // Character celebration
+            if (window.MANYACharacterSystem) {
+                window.MANYACharacterSystem.speak("Quest completed! You're amazing! 🎉", 3000);
+            }
+            
+            setTimeout(() => {
+                this.showCompletion(mastery);
+            }, 2500);
+        } else {
+            this.showCompletion(mastery);
         }
-    },
+        
+    } catch (err) {
+        console.error('Error completing quest:', err);
+        this.exit();
+    }
+},
     
     // ========== Lifecycle Methods ==========
     startHesitationTracking() {
