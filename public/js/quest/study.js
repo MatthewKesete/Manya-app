@@ -1,30 +1,45 @@
 // quest/study.js - Study Mode Handling
 export const QuestStudy = {
     async showStudySim(studySim, context) {
-        console.log('📚 Showing study simulation');
+        console.log('📚 Showing study simulation - this is a RECAP in the middle of questions');
         context.isStudyMode = true;
         
+        // Hide MCQ elements
         const optionsContainer = document.getElementById('options-container');
-        if (optionsContainer) optionsContainer.style.display = 'none';
+        if (optionsContainer) {
+            optionsContainer.style.display = 'none';
+        }
         
+        // Hide submit and hint buttons
         const submitBtn = document.querySelector('.submit-btn');
-        if (submitBtn) submitBtn.style.display = 'none';
-        
         const hintBtn = document.querySelector('.hint-btn');
+        if (submitBtn) submitBtn.style.display = 'none';
         if (hintBtn) hintBtn.style.display = 'none';
         
+        // Update header to show study mode
         const counterEl = document.querySelector('.question-counter');
-        if (counterEl) counterEl.innerHTML = '📚 <span style="color: #9f7aea;">Study Guide</span>';
+        if (counterEl) {
+            counterEl.innerHTML = '📚 <span style="color: #9f7aea;">Study Guide</span>';
+        }
         
         const questionText = document.querySelector('.question-text');
-        if (questionText) questionText.innerHTML = `<span style="color: #9f7aea;">📚 STUDY MODE:</span> ${studySim.title || 'Explore the model'}`;
+        if (questionText) {
+            questionText.innerHTML = `<span style="color: #9f7aea;">📚 STUDY MODE:</span> ${studySim.title || 'Review this topic before continuing'}`;
+        }
         
+        // Remove any existing simulation container
+        const existingSim = document.getElementById('simulation-container');
+        if (existingSim) existingSim.remove();
+        
+        // Create simulation container
         const simContainer = document.createElement('div');
         simContainer.id = 'simulation-container';
         simContainer.style.cssText = 'width:100%; min-height:500px; margin:20px 0;';
         
         const questionTextEl = document.querySelector('.question-text');
-        if (questionTextEl) questionTextEl.parentNode.insertBefore(simContainer, questionTextEl.nextSibling);
+        if (questionTextEl) {
+            questionTextEl.parentNode.insertBefore(simContainer, questionTextEl.nextSibling);
+        }
         
         try {
             if (!window.SimulationLoader) {
@@ -34,10 +49,13 @@ export const QuestStudy = {
             const simElement = await SimulationLoader.loadSimulation(studySim);
             simContainer.appendChild(simElement);
         } catch (err) {
-            simContainer.innerHTML = '<div style="color:red;">Failed to load study guide</div>';
+            simContainer.innerHTML = '<div style="color:red; padding:20px;">Failed to load study guide</div>';
         }
         
+        // Add study message
         this.addStudyMessage();
+        
+        // Setup continue button (CRITICAL - must be called after simulation loads)
         this.setupStudyContinueButton(studySim, context);
     },
 
@@ -45,33 +63,34 @@ export const QuestStudy = {
         const questionArea = document.querySelector('.gameplay-area');
         if (!questionArea) return;
         
-        // Remove existing study message if any
+        // Remove existing study message
         const existing = document.querySelector('.study-message');
         if (existing) existing.remove();
         
         const studyMessage = document.createElement('div');
         studyMessage.className = 'study-message';
         studyMessage.style.cssText = 'background:#9f7aea20; border-left:4px solid #9f7aea; padding:15px; margin:20px 0; border-radius:8px;';
-        studyMessage.innerHTML = '<strong>📚 Study Guide</strong><p style="margin-top:8px;">Take your time to explore. Click "Continue" when ready.</p>';
+        studyMessage.innerHTML = '<strong>📚 Study Guide</strong><p style="margin-top:8px;">Review this material. Click "Continue to Questions" when ready.</p>';
         questionArea.insertBefore(studyMessage, questionArea.firstChild);
     },
 
     setupStudyContinueButton(studySim, context) {
-        console.log('🔘 Setting up Continue button for study mode');
+        console.log('🔘 Setting up Continue button for study recap');
         
         // Remove any existing continue button
         const existingBtn = document.getElementById('simulation-done-btn');
         if (existingBtn) existingBtn.remove();
         
-        // Find the footer or create a button container
+        // Get or create the footer
         let footer = document.querySelector('.gameplay-footer');
         
-        // If footer doesn't exist, create a container
+        // If no footer exists, create one
         if (!footer) {
-            console.log('Creating new footer for continue button');
+            console.log('Creating footer for continue button');
             footer = document.createElement('div');
             footer.className = 'gameplay-footer';
-            footer.style.cssText = 'display: flex; justify-content: center; align-items: center; padding: 20px; margin-top: 20px; border-top: 1px solid #e2e8f0;';
+            footer.style.cssText = 'display: flex; justify-content: center; align-items: center; padding: 20px; margin-top: 20px; border-top: 1px solid #e2e8f0; background: white;';
+            
             const gameplayArea = document.querySelector('.gameplay-area');
             if (gameplayArea) {
                 gameplayArea.parentNode.insertBefore(footer, gameplayArea.nextSibling);
@@ -80,7 +99,13 @@ export const QuestStudy = {
             }
         }
         
-        // Create continue button
+        // Store references to original buttons (they are hidden but exist in DOM)
+        const originalSubmitBtn = document.querySelector('.submit-btn:not(#simulation-done-btn)');
+        const originalHintBtn = document.querySelector('.hint-btn');
+        
+        // Clear footer and create continue button
+        footer.innerHTML = '';
+        
         const continueBtn = document.createElement('button');
         continueBtn.id = 'simulation-done-btn';
         continueBtn.className = 'submit-btn';
@@ -101,7 +126,6 @@ export const QuestStudy = {
             transition: all 0.3s ease;
         `;
         
-        // Add hover effect
         continueBtn.onmouseover = () => {
             continueBtn.style.transform = 'translateY(-2px)';
             continueBtn.style.boxShadow = '0 8px 25px rgba(128, 90, 213, 0.4)';
@@ -111,11 +135,10 @@ export const QuestStudy = {
             continueBtn.style.boxShadow = '0 4px 15px rgba(128, 90, 213, 0.3)';
         };
         
-        // Add click handler
         continueBtn.onclick = () => {
-            console.log('✅ Continue button clicked - moving to next content');
+            console.log('✅ Continue button clicked - resuming questions');
             
-            // Track that they viewed the study sim
+            // Track study sim view
             context.answers.push({ 
                 questionId: studySim.id, 
                 type: 'simulation', 
@@ -135,15 +158,52 @@ export const QuestStudy = {
             // Remove the continue button
             continueBtn.remove();
             
-            // Show MCQ elements
+            // RESTORE the original buttons - find them or recreate them
+            let submitBtn = document.querySelector('.submit-btn:not(#simulation-done-btn)');
+            let hintBtn = document.querySelector('.hint-btn');
+            
+            // If buttons don't exist, create them
+            if (!submitBtn) {
+                submitBtn = document.createElement('button');
+                submitBtn.className = 'submit-btn';
+                submitBtn.id = 'submitBtn';
+                submitBtn.textContent = '✅ Submit Answer';
+                submitBtn.disabled = true;
+                submitBtn.style.cssText = 'padding: 12px 30px; background: #48bb78; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.3s; min-width: 150px;';
+                submitBtn.onclick = () => context.submitAnswer();
+            } else {
+                submitBtn.style.display = 'block';
+                submitBtn.disabled = true;
+                submitBtn.textContent = '✅ Submit Answer';
+            }
+            
+            if (!hintBtn) {
+                hintBtn = document.createElement('button');
+                hintBtn.className = 'hint-btn';
+                hintBtn.id = 'hintBtn';
+                hintBtn.textContent = '💡 Hint';
+                hintBtn.style.cssText = 'padding: 12px 30px; background: #ed8936; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.3s; min-width: 120px;';
+                hintBtn.onclick = () => context.getHint();
+            } else {
+                hintBtn.style.display = 'block';
+                hintBtn.disabled = false;
+            }
+            
+            // Update footer with restored buttons
+            footer.innerHTML = '';
+            footer.appendChild(hintBtn);
+            footer.appendChild(submitBtn);
+            
+            // Update context references
+            context.hintBtn = hintBtn;
+            context.submitBtn = submitBtn;
+            
+            // Reset UI elements
             const optionsContainer = document.getElementById('options-container');
-            if (optionsContainer) optionsContainer.style.display = 'grid';
-            
-            const submitBtn = document.querySelector('.submit-btn');
-            if (submitBtn) submitBtn.style.display = 'block';
-            
-            const hintBtn = document.querySelector('.hint-btn');
-            if (hintBtn) hintBtn.style.display = 'block';
+            if (optionsContainer) {
+                optionsContainer.style.display = 'grid';
+                // Don't clear innerHTML - it should already have options
+            }
             
             // Reset counter
             const counterEl = document.querySelector('.question-counter');
@@ -152,30 +212,42 @@ export const QuestStudy = {
                 counterEl.style.fontSize = '';
             }
             
-            // Reset difficulty badge
-            const difficultyEl = document.querySelector('.difficulty-badge');
-            if (difficultyEl) {
-                difficultyEl.textContent = '';
-                difficultyEl.className = 'difficulty-badge';
+            // Reset question text (will be set by loadQuestion if needed)
+            const questionText = document.querySelector('.question-text');
+            if (questionText && !questionText.innerHTML.includes('STUDY MODE')) {
+                // Keep existing question text
+            } else if (questionText) {
+                // Clear the study mode text, will be set by loadQuestion
+                questionText.innerHTML = '';
             }
             
-            // Reset question text
-            const questionText = document.querySelector('.question-text');
-            if (questionText) questionText.innerHTML = '';
+            // Clear any selected state
+            context.selectedOption = null;
+            context.answerSubmitted = false;
+            context.hintUsed = false;
             
-            // Load next content
+            // Important: If we're in the middle of questions, we need to reload the current question
+            // This ensures the question UI is properly displayed
+            if (context.currentQuestionIndex < context.questions.length) {
+                // Reload the current question to restore options
+                const currentQuestion = context.questions[context.currentQuestionIndex];
+                if (currentQuestion && currentQuestion.question_type !== 'SIM') {
+                    // Re-render options
+                    context.renderOptions(currentQuestion);
+                }
+            }
+            
+            // Continue to next content (which will load the next question)
+            console.log('   Continuing to next content');
             context.loadNextContent();
         };
         
-        // Clear footer and add button
-        footer.innerHTML = '';
         footer.appendChild(continueBtn);
-        
-        console.log('✅ Continue button added to footer');
+        console.log('✅ Continue button added to footer for study recap');
     },
 
     async loadSimulationQuestion(question, context) {
-        console.log('🎮 Loading simulation question');
+        console.log('🎮 Loading simulation question (labeling mode)');
         
         try {
             if (!window.SimulationLoader) {

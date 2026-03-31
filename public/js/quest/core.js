@@ -105,73 +105,90 @@ export const QuestCore = {
         }
     },
 
-    loadQuestion(index, context) {
-        if (index >= context.questions.length) {
-            context.completeQuest();
-            return;
-        }
-        
-        context.currentQuestionIndex = index;
-        const question = context.questions[index];
-        
-        const optionsContainer = document.getElementById('options-container');
-        if (optionsContainer) {
-            optionsContainer.style.display = 'grid';
-            optionsContainer.innerHTML = '';
-        }
-        
-        const submitBtn = document.querySelector('.submit-btn');
-        if (submitBtn) {
-            submitBtn.style.display = 'block';
-            submitBtn.disabled = true;
-            submitBtn.textContent = '✅ Submit Answer';
-        }
-        
-        const hintBtn = document.querySelector('.hint-btn');
-        if (hintBtn) {
-            hintBtn.style.display = 'block';
-            hintBtn.disabled = false;
-        }
-        
-        if (question.question_type === 'SIM') {
-            QuestStudy.loadSimulationQuestion(question, context);
-            return;
-        }
-        
-        if (context.hesitationTimer) clearInterval(context.hesitationTimer);
-        
-        context.selectedOption = null;
-        context.answerSubmitted = false;
-        context.hintUsed = false;
-        context.answerChanged = false;
-        context.changeCount = 0;
-        
-        const counterEl = document.querySelector('.question-counter');
-        if (counterEl) counterEl.textContent = `${index + 1}/${context.questions.length}`;
-        
-        const questionTextEl = document.querySelector('.question-text');
-        if (questionTextEl) questionTextEl.textContent = question.text || 'Question text missing';
-        
-        const topicBadgeEl = document.querySelector('.topic-badge');
-        if (topicBadgeEl) topicBadgeEl.textContent = context.challenge?.name || 'Topic';
-        
-        const difficultyEl = document.querySelector('.difficulty-badge');
-        if (difficultyEl) {
-            const difficulty = question.difficulty || 'M';
-            difficultyEl.textContent = difficulty === 'E' ? 'Easy' : difficulty === 'M' ? 'Medium' : 'Hard';
-            difficultyEl.className = 'difficulty-badge ' + (difficulty === 'E' ? 'easy' : difficulty === 'M' ? 'medium' : 'hard');
-        }
-        
-        QuestAnswer.renderOptions(question, (letter) => QuestAnswer.selectOption(letter, context));
-        
-        if (context.hintDisplay) {
-            context.hintDisplay.style.display = 'none';
-            context.hintDisplay.textContent = '';
-        }
-        
-        context.questionStartTime = Date.now();
-        this.startHesitationTracking(context);
-    },
+loadQuestion(index, context) {
+    if (index >= context.questions.length) {
+        context.completeQuest();
+        return;
+    }
+    
+    context.currentQuestionIndex = index;
+    const question = context.questions[index];
+    
+    // Make sure options container is visible and cleared
+    const optionsContainer = document.getElementById('options-container');
+    if (optionsContainer) {
+        optionsContainer.style.display = 'grid';
+        optionsContainer.innerHTML = '';
+    }
+    
+    // Make sure submit and hint buttons are visible
+    const submitBtn = document.querySelector('.submit-btn');
+    const hintBtn = document.querySelector('.hint-btn');
+    
+    if (submitBtn) {
+        submitBtn.style.display = 'block';
+        submitBtn.disabled = true;
+        submitBtn.textContent = '✅ Submit Answer';
+    }
+    if (hintBtn) {
+        hintBtn.style.display = 'block';
+        hintBtn.disabled = false;
+    }
+    
+    // Remove any lingering simulation elements
+    const simContainer = document.getElementById('simulation-container');
+    if (simContainer) simContainer.remove();
+    
+    const studyMessage = document.querySelector('.study-message');
+    if (studyMessage) studyMessage.remove();
+    
+    const continueBtn = document.getElementById('simulation-done-btn');
+    if (continueBtn) continueBtn.remove();
+    
+    if (question.question_type === 'SIM') {
+        QuestStudy.loadSimulationQuestion(question, context);
+        return;
+    }
+    
+    // Reset state
+    context.selectedOption = null;
+    context.answerSubmitted = false;
+    context.hintUsed = false;
+    context.answerChanged = false;
+    context.changeCount = 0;
+    
+    // Update counter
+    const counterEl = document.querySelector('.question-counter');
+    if (counterEl) counterEl.textContent = `${index + 1}/${context.questions.length}`;
+    
+    // Set question text
+    const questionTextEl = document.querySelector('.question-text');
+    if (questionTextEl) questionTextEl.textContent = question.text || 'Question text missing';
+    
+    // Set topic badge
+    const topicBadgeEl = document.querySelector('.topic-badge');
+    if (topicBadgeEl) topicBadgeEl.textContent = context.challenge?.name || 'Topic';
+    
+    // Set difficulty badge
+    const difficultyEl = document.querySelector('.difficulty-badge');
+    if (difficultyEl) {
+        const difficulty = question.difficulty || 'M';
+        difficultyEl.textContent = difficulty === 'E' ? 'Easy' : difficulty === 'M' ? 'Medium' : 'Hard';
+        difficultyEl.className = 'difficulty-badge ' + (difficulty === 'E' ? 'easy' : difficulty === 'M' ? 'medium' : 'hard');
+    }
+    
+    // Render options
+    QuestAnswer.renderOptions(question, (letter) => QuestAnswer.selectOption(letter, context));
+    
+    // Reset hint display
+    if (context.hintDisplay) {
+        context.hintDisplay.style.display = 'none';
+        context.hintDisplay.textContent = '';
+    }
+    
+    context.questionStartTime = Date.now();
+    this.startHesitationTracking(context);
+},
 
     startHesitationTracking(context) {
         context.questionStartTime = Date.now();

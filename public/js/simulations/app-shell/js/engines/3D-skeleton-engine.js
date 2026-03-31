@@ -267,49 +267,65 @@ export const SkeletonQuestEngine = {
     },
 
     // --- QUIZ MODE (Simplified) ---
-    renderLabeling: (container, data) => {
+renderLabeling: (container, data) => {
     SkeletonQuestEngine.injectStyles();
+    
+    // Ensure container has enough height
+    container.style.minHeight = '600px';
+    container.style.height = 'auto';
+    container.style.position = 'relative';
+    
     container.innerHTML = `
-        <div class="manya-3d-root">
-            <div class="model-loader" id="skel-loader-q">
-                <span>Loading Quiz...</span>
-            </div>
-            
-            <div style="position:absolute; top:15px; left:15px; right:15px; background:rgba(255,255,255,0.95); padding:15px; border-radius:16px; z-index:100; text-align:center; box-shadow:0 4px 20px rgba(0,0,0,0.1); backdrop-filter:blur(5px);">
-                <h3 style="margin:0; font-size:15px; color:#1e293b;">${data.variantTitle || 'Label the parts'}</h3>
-                <p id="q-status" style="margin:5px 0 0 0; color:#7c3aed; font-weight:800; font-size:12px;">
+        <div class="manya-3d-root" style="position: relative; display: flex; flex-direction: column; height: 100%; min-height: 600px; background: #f8fafc;">
+            <!-- Top Bar with Instructions -->
+            <div style="background: white; padding: 12px 16px; border-bottom: 1px solid #e2e8f0; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.05); flex-shrink: 0;">
+                <h3 style="margin: 0; font-size: 16px; color: #1e293b;">${data.variantTitle || 'Label the parts'}</h3>
+                <p id="q-status" style="margin: 4px 0 0 0; color: #7c3aed; font-weight: 500; font-size: 12px;">
                     Tap a purple pin to select a part, then choose its name
                 </p>
             </div>
 
-            <model-viewer id="q3d" src="${data.modelUrl}" camera-controls shadow-intensity="1" bounds="tight">
-                ${data.hotspots.map(hs => `
-                    <button class="Hotspot" id="pin-${hs.id}" slot="hotspot-${hs.id}"
-                            data-id="${hs.id}"
-                            data-position="${hs.pos.replace('m','')}" 
-                            data-normal="${(hs.norm || "0 1 0").replace('m','')}">
-                        <div class="HotspotAnnotation" id="anno-${hs.id}"></div>
-                    </button>
-                `).join('')}
-            </model-viewer>
+            <!-- 3D Model Container - Fixed height with scroll if needed -->
+            <div style="flex: 1; min-height: 350px; max-height: 450px; position: relative; background: #f0f4ff; overflow: hidden;">
+                <div class="model-loader" id="skel-loader-q" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);">
+                    <div style="width:30px; height:30px; border:3px solid #e2e8f0; border-top-color:#7c3aed; border-radius:50%; animation:spin 1s linear infinite; margin-bottom:10px;"></div>
+                    <span>Loading 3D Model...</span>
+                </div>
+                <model-viewer id="q3d" 
+                    src="${data.modelUrl}" 
+                    camera-controls 
+                    shadow-intensity="1" 
+                    bounds="tight"
+                    style="width: 100%; height: 100%; min-height: 350px;">
+                    ${data.hotspots.map(hs => `
+                        <button class="Hotspot" id="pin-${hs.id}" slot="hotspot-${hs.id}"
+                                data-id="${hs.id}"
+                                data-position="${hs.pos.replace('m','')}" 
+                                data-normal="${(hs.norm || "0 1 0").replace('m','')}">
+                            <div class="HotspotAnnotation" id="anno-${hs.id}"></div>
+                        </button>
+                    `).join('')}
+                </model-viewer>
+            </div>
 
-            <div style="position:absolute; bottom:100px; left:0; right:0; background:white; padding:20px; z-index:100; box-shadow:0 -5px 20px rgba(0,0,0,0.05);">
-                <div id="wordbank" style="display:flex; flex-wrap:wrap; gap:12px; justify-content:center;">
+            <!-- Word Bank - Bottom Section -->
+            <div style="background: white; padding: 16px; border-top: 1px solid #e2e8f0; border-bottom: 1px solid #e2e8f0; flex-shrink: 0;">
+                <div id="wordbank" style="display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; max-height: 120px; overflow-y: auto; padding: 4px;">
                     ${data.wordBank.map(w => `
-                        <button class="q-btn" style="padding:14px 20px; background:#f8fafc; border:2px solid #e2e8f0; border-radius:12px; font-weight:700; color:#475569; font-size:13px;" 
-                                data-word="${w}">${w}</button>
+                        <button class="q-btn" data-word="${w}" style="padding: 8px 18px; background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 30px; font-weight: 500; color: #334155; font-size: 13px; cursor: pointer; transition: all 0.2s;">
+                            ${w}
+                        </button>
                     `).join('')}
                 </div>
             </div>
 
-            <div style="position:absolute; bottom:20px; left:50%; transform:translateX(-50%); z-index:100; display:flex; gap:16px;">
-                <button id="submitBtn" disabled 
-                        style="padding:14px 32px; font-size:16px; font-weight:700; background:#7c3aed; color:white; border:none; border-radius:30px; cursor:pointer;">
+            <!-- Action Buttons at Bottom -->
+            <div style="background: white; padding: 12px 16px; display: flex; justify-content: center; gap: 20px; flex-shrink: 0;">
+                <button id="submitBtn" style="padding: 10px 28px; font-size: 15px; font-weight: 600; background: #7c3aed; color: white; border: none; border-radius: 40px; cursor: pointer; min-width: 140px;">
                     Submit Answers
                 </button>
-                <button id="resetBtn" 
-                        style="padding:14px 32px; font-size:16px; font-weight:700; background:#6b7280; color:white; border:none; border-radius:30px; cursor:pointer;">
-                    Reset
+                <button id="resetBtn" style="padding: 10px 28px; font-size: 15px; font-weight: 600; background: #6b7280; color: white; border: none; border-radius: 40px; cursor: pointer; min-width: 120px;">
+                    Reset All
                 </button>
             </div>
         </div>
@@ -324,142 +340,134 @@ export const SkeletonQuestEngine = {
     const hotspots = container.querySelectorAll('.Hotspot');
 
     let currentPin = null;
-    const userSelections = {}; // pinId → chosen word
+    const userSelections = {};
 
     viewer.addEventListener('load', () => { 
-        loader.classList.add('hidden'); 
+        if (loader) loader.style.display = 'none';
         viewer.classList.add('loaded');
         status.innerText = "Tap a purple pin to select a part, then choose its name";
     });
 
     // Pin selection
     hotspots.forEach(p => {
-        p.onclick = () => {
+        p.onclick = (e) => {
+            e.stopPropagation();
             hotspots.forEach(x => x.classList.remove('selected'));
             p.classList.add('selected');
             currentPin = p.dataset.id;
-            status.innerText = "Now choose the name for this part from below";
+            status.innerText = "Now choose the name for this part";
+            status.style.color = "#7c3aed";
         };
     });
 
-    // Word selection – show chosen word as hint on pin (no right/wrong yet)
+    // Word selection
     wordButtons.forEach(btn => {
         btn.onclick = () => {
             if (!currentPin) {
                 status.innerText = "⚠️ Tap a purple pin first!";
+                status.style.color = "#dc2626";
+                setTimeout(() => {
+                    status.innerText = "Tap a purple pin to select a part, then choose its name";
+                    status.style.color = "#7c3aed";
+                }, 1500);
                 return;
             }
 
             const selectedWord = btn.dataset.word;
             userSelections[currentPin] = selectedWord;
 
-            // Show chosen word as floating hint
+            // Show chosen word on the pin
             const anno = container.querySelector(`#anno-${currentPin}`);
-            anno.innerText = selectedWord;
+            if (anno) anno.innerText = selectedWord;
             const pin = container.querySelector(`#pin-${currentPin}`);
-            pin.classList.add('labeled');
+            if (pin) pin.classList.add('labeled');
 
-            // Visual cue on button
-            wordButtons.forEach(b => b.classList.remove('selected'));
-            btn.classList.add('selected');
+            // Visual feedback on selected button
+            wordButtons.forEach(b => {
+                b.style.background = '#f1f5f9';
+                b.style.color = '#334155';
+                b.style.borderColor = '#cbd5e1';
+            });
+            btn.style.background = '#7c3aed';
+            btn.style.color = 'white';
+            btn.style.borderColor = '#7c3aed';
 
-            status.innerText = `Labeled as "${selectedWord}". Continue labeling or Submit.`;
+            status.innerText = `✓ Labeled as "${selectedWord}"`;
+            status.style.color = "#16a34a";
 
-            // Auto-deselect pin
+            // Deselect pin
             hotspots.forEach(x => x.classList.remove('selected'));
             currentPin = null;
-
-            // Enable Submit only when all labeled
-            checkAllLabeled();
+            
+            // Reset status after 1.5 seconds
+            setTimeout(() => {
+                if (status.innerText.includes("Labeled as")) {
+                    status.innerText = "Tap a purple pin to select a part, then choose its name";
+                    status.style.color = "#7c3aed";
+                }
+            }, 1500);
         };
     });
 
-    // Check if all pins have labels → enable Submit
-    function checkAllLabeled() {
-        const allLabeled = data.hotspots.every(h => userSelections[h.id]);
-        submitBtn.disabled = !allLabeled;
-        if (allLabeled) {
-            status.innerText = "All parts labeled! Click Submit to check.";
+    // Submit handler - ALLOWS SUBMIT EVEN IF NOT ALL LABELED
+    submitBtn.onclick = () => {
+        let allCorrect = true;
+        let correctCount = 0;
+        
+        data.hotspots.forEach(h => {
+            const userAnswer = userSelections[h.id];
+            if (userAnswer === h.label) {
+                correctCount++;
+            } else {
+                allCorrect = false;
+            }
+        });
+        
+        const totalHotspots = data.hotspots.length;
+        const hasPartial = correctCount > 0 && correctCount < totalHotspots;
+        
+        // Update status message
+        if (allCorrect) {
+            status.innerHTML = `<span style="color:#16a34a; font-size:1em;">🏆 Perfect! All ${totalHotspots} parts labeled correctly!</span>`;
+        } else if (hasPartial) {
+            status.innerHTML = `<span style="color:#f59e0b; font-size:1em;">📝 ${correctCount}/${totalHotspots} correct. Keep practicing!</span>`;
+        } else {
+            status.innerHTML = `<span style="color:#dc2626; font-size:1em;">💪 ${correctCount}/${totalHotspots} correct. Try again!</span>`;
         }
-    }
-
-    // Submit – check ALL answers only when clicked
- // Inside renderLabeling function, right after const submitBtn = ... line
-
-// Expose result callback to parent (QuestScreen will set this)
-window.onSimulationSubmit = null;  // will be set by QuestScreen
-
-// Then in your submitBtn.onclick:
-submitBtn.onclick = () => {
-    let allCorrect = true;
-    data.hotspots.forEach(h => {
-        if (userSelections[h.id] !== h.label) {
-            allCorrect = false;
+        
+        // Trigger callback for quest progression
+        if (window.onSimulationSubmit) {
+            window.onSimulationSubmit({
+                isCorrect: allCorrect,
+                correct: correctCount,
+                total: totalHotspots,
+                pointsEarned: allCorrect ? 3 : (correctCount > 0 ? 1 : 0),
+                selections: userSelections
+            });
         }
-    });
-
-    // Show UI feedback (your existing code)
-    if (allCorrect) {
-        status.innerHTML = `<span style="color:#16a34a; font-size:1.3em;">🏆 Correct! Perfect score!</span>`;
-    } else {
-        status.innerHTML = `<span style="color:#dc2626; font-size:1.2em;">Incorrect – some parts are wrong.</span>`;
-    }
-
-    // IMPORTANT: Notify parent system (QuestScreen)
-    const result = {
-        isCorrect: allCorrect,
-        correctCount: allCorrect ? data.hotspots.length : 0,
-        total: data.hotspots.length,
-        selections: { ...userSelections }
     };
 
-    if (window.onSimulationSubmit) {
-        console.log('🔔 Notifying QuestScreen of submit result:', result);
-        window.onSimulationSubmit(result);
-    } else {
-        console.warn('⚠️ No parent listener found for simulation submit');
-    }
-};
-
-    // Reset
+    // Reset button
     resetBtn.onclick = () => {
         currentPin = null;
         Object.keys(userSelections).forEach(k => delete userSelections[k]);
         status.innerText = "Tap a purple pin to select a part, then choose its name";
+        status.style.color = "#7c3aed";
+        
         hotspots.forEach(p => {
             p.classList.remove('selected', 'labeled');
-            container.querySelector(`#anno-${p.id.replace('pin-','')}`).innerText = '';
+            const anno = container.querySelector(`#anno-${p.id.replace('pin-', '')}`);
+            if (anno) anno.innerText = '';
         });
-        wordButtons.forEach(b => b.classList.remove('selected'));
-        submitBtn.disabled = true;
+        
+        wordButtons.forEach(b => {
+            b.style.background = '#f1f5f9';
+            b.style.color = '#334155';
+            b.style.borderColor = '#cbd5e1';
+        });
+        
         viewer.cameraTarget = "auto auto auto";
         viewer.cameraOrbit = "0deg 75deg 105%";
     };
-    // Inside your renderLabeling function, update the submitAnswers function:
-
-window.submitAnswers = () => {
-    let allCorrect = true;
-    data.hotspots.forEach(h => {
-        if (userSelections[h.id] !== h.label) {
-            allCorrect = false;
-        }
-    });
-
-    if (allCorrect) {
-        status.innerHTML = `<span style="color:#16a34a; font-size:1.3em;">✅ Completed correctly! Perfect score!</span>`;
-        
-        // Capture result and auto-advance
-        if (window.captureSimulationResult) {
-            window.captureSimulationResult(true, data.hotspots.length, data.hotspots.length);
-        }
-    } else {
-        status.innerHTML = `<span style="color:#dc2626; font-size:1.2em;">Completed – but incorrect (some parts are wrong).</span>`;
-        
-        // Capture result and auto-advance (incorrect)
-        if (window.captureSimulationResult) {
-            window.captureSimulationResult(false, 0, data.hotspots.length);
-        }
-    }
-};
 }
 };
