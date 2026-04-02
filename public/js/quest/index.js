@@ -374,17 +374,24 @@ async completeQuest() {
     console.log(`   Mastery: ${mastery}%, Passed: ${isQuestPassed}`);
     
     try {
-        await fetch('/api/quests/complete', {
+        const userId = window.App?.currentUser || 'student-001';
+        const challengeId = this.challenge.id;
+        
+        // First, save the completed quest
+        const completeResponse = await fetch('/api/quests/complete', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                userId: window.App?.currentUser || 'student-001',
-                challengeId: this.challenge.id,
+                userId: userId,
+                challengeId: challengeId,
                 questId: this.questData?.questId,
                 mastery: mastery,
                 answers: this.answers
             })
         });
+        
+        const completeData = await completeResponse.json();
+        console.log('Quest completion saved:', completeData);
         
         if (isQuestPassed) {
             console.log('🎉 Quest completed! Playing celebration effects...');
@@ -395,17 +402,6 @@ async completeQuest() {
                 celebrationWord = await window.MANYAAudioSystem.playQuestComplete();
             }
             
-            // Play additional fanfare trumpet (in addition to random sound)
-            if (window.MANYAAudioSystem) {
-                try {
-                    const fanfare = new Audio('/multimedia_assets/audios/fanfare-trumpets.mp3');
-                    fanfare.volume = 0.7;
-                    fanfare.play().catch(() => {});
-                } catch (err) {
-                    console.log('Fanfare play failed:', err);
-                }
-            }
-            
             // Show word flash
             if (celebrationWord) {
                 this.showWordFlash(celebrationWord);
@@ -413,13 +409,13 @@ async completeQuest() {
                 this.showWordFlash('Complete');
             }
             
-            // Show double screen flash
+            // Show quest complete flash
             this.showDoubleScreenFlash('quest-complete');
             
             // Show chest unlock animation
             this.showChestUnlockAnimation();
             
-            // ADD CONFETTI AND FIREWORKS CELEBRATION
+            // Standard celebration
             if (window.ConfettiService) {
                 window.ConfettiService.questComplete();
             }
@@ -427,6 +423,19 @@ async completeQuest() {
             // Character celebration
             if (window.MANYACharacterSystem) {
                 window.MANYACharacterSystem.speak("Quest completed! You're amazing! 🎉", 3000);
+            }
+            
+            // CHECK IF THIS WAS THE LAST QUEST IN THE CHALLENGE
+            // Get current challenge progress from the response
+            const totalQuestsInChallenge = this.challenge.totalQuests || 7;
+            const completedQuestsAfter = completeData.completedQuests || 0;
+            const isChallengeComplete = completedQuestsAfter >= totalQuestsInChallenge && isQuestPassed;
+            
+            console.log(`   Challenge check: completedQuests=${completedQuestsAfter}, totalQuests=${totalQuestsInChallenge}, isChallengeComplete=${isChallengeComplete}`);
+            
+            if (isChallengeComplete) {
+                console.log('🏆🏆🏆 CHALLENGE COMPLETE! Epic celebration starting... 🏆🏆🏆');
+                await this.celebrateChallengeComplete();
             }
             
             setTimeout(() => {
@@ -440,6 +449,214 @@ async completeQuest() {
         console.error('Error completing quest:', err);
         this.exit();
     }
+},
+
+// Enhanced challenge complete celebration
+async celebrateChallengeComplete() {
+    console.log('🎉🎉🎉 CHALLENGE COMPLETE! Epic celebration starting...');
+    
+    // Play the full complete.mp3
+    try {
+        const celebrationAudio = new Audio('/multimedia_assets/audios/challenge_complete/complete.mp3');
+        celebrationAudio.volume = 0.9;
+        celebrationAudio.play().catch(err => {
+            console.log('Challenge celebration audio play failed:', err);
+        });
+        window.currentCelebrationAudio = celebrationAudio;
+    } catch (err) {
+        console.log('Error playing challenge complete audio:', err);
+    }
+    
+    // INTENSE confetti and fireworks - full screen celebration
+    if (window.ConfettiService) {
+        window.ConfettiService.challengeCompleteCelebration();
+    }
+    
+    // Multiple golden screen flashes (3 flashes for epic celebration)
+    this.showDoubleScreenFlash('challenge-complete');
+    setTimeout(() => {
+        this.showDoubleScreenFlash('challenge-complete');
+    }, 400);
+    setTimeout(() => {
+        this.showDoubleScreenFlash('challenge-complete');
+    }, 800);
+    
+    // Show challenge complete modal
+    this.showChallengeCompleteModal();
+    
+    // Character epic celebration
+    if (window.MANYACharacterSystem) {
+        window.MANYACharacterSystem.speak("CHALLENGE COMPLETE! You're a true champion! 🏆🎉✨", 5000);
+    }
+    
+    // Play additional fanfare
+    setTimeout(() => {
+        try {
+            const fanfare = new Audio('/multimedia_assets/audios/fanfare-trumpets.mp3');
+            fanfare.volume = 0.7;
+            fanfare.play().catch(() => {});
+        } catch (err) {}
+    }, 500);
+},
+
+showChallengeCompleteModal() {
+    const modal = document.createElement('div');
+    modal.className = 'challenge-complete-overlay';
+    modal.innerHTML = `
+        <div class="challenge-complete-card">
+            <div class="challenge-complete-icon">🏆✨🎉</div>
+            <div class="challenge-complete-title">CHALLENGE COMPLETE!</div>
+            <div class="challenge-complete-message">
+                Congratulations! You've mastered this challenge!<br>
+                🌟 New challenges await! 🌟
+            </div>
+            <button class="challenge-complete-btn" id="close-challenge-modal">Continue Journey →</button>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    const closeBtn = modal.querySelector('#close-challenge-modal');
+    closeBtn.onclick = () => {
+        modal.remove();
+        if (window.currentCelebrationAudio) {
+            window.currentCelebrationAudio.pause();
+            window.currentCelebrationAudio.currentTime = 0;
+            window.currentCelebrationAudio = null;
+        }
+    };
+    
+    // Auto-close after 12 seconds
+    setTimeout(() => {
+        if (modal.parentNode) {
+            modal.style.animation = 'fadeOut 0.5s ease';
+            setTimeout(() => {
+                if (modal.parentNode) modal.remove();
+            }, 500);
+        }
+    }, 12000);
+},
+
+// New method for challenge complete celebration
+async celebrateChallengeComplete() {
+    console.log('🎉🎉🎉 CHALLENGE COMPLETE! Epic celebration starting...');
+    
+    // Play the full complete.mp3
+    if (window.MANYAAudioSystem) {
+        try {
+            const celebrationAudio = new Audio('/multimedia_assets/audios/challenge_complete/complete.mp3');
+            celebrationAudio.volume = 0.9;
+            celebrationAudio.play().catch(err => {
+                console.log('Challenge celebration audio play failed:', err);
+            });
+            window.currentCelebrationAudio = celebrationAudio;
+        } catch (err) {
+            console.log('Error playing challenge complete audio:', err);
+        }
+    }
+    
+    // INTENSE confetti and fireworks - full screen celebration
+    if (window.ConfettiService) {
+        window.ConfettiService.challengeCompleteCelebration();
+    }
+    
+    // Show challenge complete modal (card in center, effects all around)
+    this.showChallengeCompleteModal();
+    
+    // Multiple golden screen flashes
+    this.showDoubleScreenFlash('challenge-complete');
+    setTimeout(() => {
+        this.showDoubleScreenFlash('challenge-complete');
+    }, 400);
+    
+    // Character epic celebration
+    if (window.MANYACharacterSystem) {
+        window.MANYACharacterSystem.speak("CHALLENGE COMPLETE! You're a true champion! 🏆🎉✨", 5000);
+    }
+    
+    // Play additional fanfare
+    setTimeout(() => {
+        try {
+            const fanfare = new Audio('/multimedia_assets/audios/fanfare-trumpets.mp3');
+            fanfare.volume = 0.7;
+            fanfare.play().catch(() => {});
+        } catch (err) {}
+    }, 500);
+},
+
+showChallengeCompleteModal() {
+    const modal = document.createElement('div');
+    modal.className = 'challenge-complete-overlay';
+    modal.innerHTML = `
+        <div class="challenge-complete-card">
+            <div class="challenge-complete-icon">🏆✨🎉</div>
+            <div class="challenge-complete-title">CHALLENGE COMPLETE!</div>
+            <div class="challenge-complete-message">
+                Congratulations! You've mastered this challenge!<br>
+                🌟 New challenges await! 🌟
+            </div>
+            <button class="challenge-complete-btn" id="close-challenge-modal">Continue Journey →</button>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    const closeBtn = modal.querySelector('#close-challenge-modal');
+    closeBtn.onclick = () => {
+        modal.remove();
+        if (window.currentCelebrationAudio) {
+            window.currentCelebrationAudio.pause();
+            window.currentCelebrationAudio.currentTime = 0;
+            window.currentCelebrationAudio = null;
+        }
+    };
+    
+    // Auto-close after 10 seconds (but celebration continues)
+    setTimeout(() => {
+        if (modal.parentNode) {
+            modal.style.animation = 'fadeOut 0.5s ease';
+            setTimeout(() => {
+                if (modal.parentNode) modal.remove();
+            }, 500);
+        }
+    }, 10000);
+},
+
+// Show challenge complete modal
+showChallengeCompleteModal() {
+    const modal = document.createElement('div');
+    modal.className = 'challenge-complete-overlay';
+    modal.innerHTML = `
+        <div class="challenge-complete-card">
+            <div class="challenge-complete-icon">🏆</div>
+            <div class="challenge-complete-title">CHALLENGE COMPLETE!</div>
+            <div class="challenge-complete-message">
+                Congratulations! You've mastered this challenge!<br>
+                New challenges await!
+            </div>
+            <button class="challenge-complete-btn" id="close-challenge-modal">Continue Journey →</button>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    const closeBtn = modal.querySelector('#close-challenge-modal');
+    closeBtn.onclick = () => {
+        modal.remove();
+        // Stop celebration audio if still playing
+        if (window.currentCelebrationAudio) {
+            window.currentCelebrationAudio.pause();
+            window.currentCelebrationAudio.currentTime = 0;
+            window.currentCelebrationAudio = null;
+        }
+    };
+    
+    // Auto-close after 8 seconds (but audio continues)
+    setTimeout(() => {
+        if (modal.parentNode) {
+            modal.remove();
+        }
+    }, 8000);
 },
     
     // ========== Lifecycle Methods ==========

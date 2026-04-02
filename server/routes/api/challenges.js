@@ -185,5 +185,29 @@ router.get('/:topic/:subtopicId', async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 });
-
+// In server/routes/api/challenges.js - Add this endpoint
+router.get('/progress/:userId/:challengeId', async (req, res) => {
+    const { userId, challengeId } = req.params;
+    
+    try {
+        // Get completed quests for this challenge
+        const result = await pool.query(
+            `SELECT COUNT(*) as completed 
+             FROM quest_completions 
+             WHERE user_id = $1 AND challenge_id = $2 AND mastery_score >= 75`,
+            [userId, challengeId]
+        );
+        
+        const completedQuests = parseInt(result.rows[0]?.completed) || 0;
+        
+        res.json({ 
+            completedQuests,
+            challengeId,
+            userId
+        });
+    } catch (err) {
+        console.error('Error getting challenge progress:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
 module.exports = router;

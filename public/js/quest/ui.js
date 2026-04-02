@@ -1,17 +1,24 @@
 // quest/ui.js - UI Effects and Animations
 export const QuestUI = {
-    showDoubleScreenFlash(type) {
-        const existing = document.querySelector('.screen-flash');
-        if (existing) existing.remove();
-        
-        const flash = document.createElement('div');
-        flash.className = `screen-flash ${type}`;
-        document.body.appendChild(flash);
-        
-        setTimeout(() => {
-            if (flash.parentNode) flash.remove();
-        }, 800);
-    },
+showDoubleScreenFlash(type) {
+    const existing = document.querySelector('.screen-flash');
+    if (existing) existing.remove();
+    
+    const flash = document.createElement('div');
+    flash.className = `screen-flash ${type}`;
+    document.body.appendChild(flash);
+    
+    // Different durations based on type
+    let duration = 800;
+    if (type === 'challenge-complete') duration = 1200;
+    if (type === 'quest-complete') duration = 800;
+    if (type === 'correct') duration = 700;
+    if (type === 'wrong') duration = 500;
+    
+    setTimeout(() => {
+        if (flash.parentNode) flash.remove();
+    }, duration);
+},
 
     showWordFlash(word) {
         const existing = document.querySelector('.word-flash');
