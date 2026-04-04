@@ -209,13 +209,17 @@ showDoubleScreenFlash(type) {
         }, 2000);
     },
 
-    showCompletion(mastery, accuracy, onContinue) {
-        const overlay = document.querySelector('.quest-complete-overlay');
-        if (!overlay) return;
-        
-        overlay.querySelector('.mastery-score').textContent = mastery + '%';
-        overlay.querySelector('.earned-rewards').innerHTML = `<div>✨ Mastery: ${mastery}%</div><div>📊 Accuracy: ${Math.round(accuracy)}%</div>`;
-        overlay.querySelector('.continue-btn').onclick = onContinue;
-        overlay.style.display = 'flex';
-    }
+showCompletion(mastery, accuracy, onContinue) {
+    const overlay = document.querySelector('.quest-complete-overlay');
+    if (!overlay) return;
+    
+    // Remove mastery percentage display - just show simple completion message
+    overlay.querySelector('.mastery-score').style.display = 'none';
+    overlay.querySelector('.earned-rewards').innerHTML = `
+        <div>🎉 Quest Complete! 🎉</div>
+        <div>📊 Accuracy: ${Math.round(accuracy)}%</div>
+    `;
+    overlay.querySelector('.continue-btn').onclick = onContinue;
+    overlay.style.display = 'flex';
+},
 };

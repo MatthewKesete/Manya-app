@@ -1015,7 +1015,7 @@ model-viewer {
     right: 0;
     bottom: 0;
     background: rgba(255, 255, 255, 0.98);
-    display: flex;
+    display: none;
     align-items: center;
     justify-content: center;
     z-index: 5000;

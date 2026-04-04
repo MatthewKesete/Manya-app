@@ -56,6 +56,40 @@ const QuestScreen = {
     // ========== Core Methods ==========
     init(questData, challenge, onComplete) {
         QuestCore.init(questData, challenge, onComplete, this);
+        
+        // Initialize progress bar
+        if (window.ProgressBarSystem) {
+            setTimeout(() => {
+                window.ProgressBarSystem.init();
+            }, 100);
+        }
+        
+        // Initialize coin animation
+        if (window.CoinAnimation) {
+            setTimeout(() => {
+                window.CoinAnimation.init();
+            }, 100);
+        }
+        // Initialize progress bar
+    if (window.ProgressBarSystem) {
+        setTimeout(() => {
+            window.ProgressBarSystem.init();
+        }, 100);
+    }
+    
+    // Initialize coin animation
+    if (window.CoinAnimation) {
+        setTimeout(() => {
+            window.CoinAnimation.init();
+        }, 100);
+    }
+    
+    // Initialize like button system
+    if (window.LikeButtonSystem) {
+        setTimeout(() => {
+            window.LikeButtonSystem.init();
+        }, 100);
+    }
     },
     
     loadNextContent() {
@@ -116,8 +150,22 @@ const QuestScreen = {
             coinResult = await QuestRewards.updateCoins(window.App?.currentUser || 'student-001', 
                 isCorrect, this.hintUsed, (balance) => QuestRewards.updateCoinDisplay(balance));
             
+            // Enhanced coin animation with flying coins
             if (coinResult && coinResult.coinChange !== undefined) {
-                QuestUI.showCoinAnimation(coinResult.coinChange);
+                // Find source element for flying coin
+                const sourceEl = document.querySelector('.option.selected') || this.submitBtn;
+                
+                if (coinResult.coinChange > 0) {
+                    if (window.CoinAnimation) {
+                        await window.CoinAnimation.addCoins(coinResult.coinChange, sourceEl);
+                    }
+                    QuestUI.showCoinAnimation(coinResult.coinChange);
+                } else if (coinResult.coinChange < 0) {
+                    if (window.CoinAnimation) {
+                        await window.CoinAnimation.deductCoins(Math.abs(coinResult.coinChange));
+                    }
+                    QuestUI.showCoinAnimation(coinResult.coinChange);
+                }
             }
         } catch (err) {
             console.error('Error tracking rewards:', err);
@@ -160,6 +208,13 @@ const QuestScreen = {
         this.params.accuracy = (correctSoFar / this.answers.length) * 100;
         QuestRewards.updateParameterDisplays(this.params, this.answers);
         
+        // Update progress bar
+        const totalCount = this.answers.length;
+        const streak = await this.getCurrentStreak();
+        if (window.ProgressBarSystem) {
+            window.ProgressBarSystem.updateProgress(correctSoFar, totalCount, streak);
+        }
+        
         // Handle based on correct/wrong
         if (isCorrect) {
             console.log('   CORRECT - Playing effects, no modal');
@@ -186,73 +241,91 @@ const QuestScreen = {
                 console.log(`   Advancing to question ${this.currentQuestionIndex + 1}`);
                 this.loadNextContent();
             }, 1500);
+             if (window.LikeButtonSystem) {
+        window.LikeButtonSystem.recordCorrect();
+             }
             
- } else {
-    console.log('   WRONG - Growth Mindset Feedback');
-    
-    // Play single error sound
-    if (window.MANYAAudioSystem && window.MANYAAudioSystem.playWrong) {
-        window.MANYAAudioSystem.playWrong();
-    }
-    
-    // Gentle gold glow
-    this.showDoubleScreenFlash('wrong');
-    
-    // Gently highlight the correct answer
-    document.querySelectorAll('.option').forEach(opt => {
-        if (opt.dataset.letter === correctAnswer) {
-            opt.classList.add('gentle-highlight');
-        }
-    });
-    
-    // Growth mindset message
-    this.showGrowthMindsetMessage();
-    
-    // Character encouragement
-    if (window.MANYACharacterSystem) {
-        const growthMessages = [
-            "Mistakes help us grow! Let's see the correct answer. 🌱",
-            "That's how we learn! Check this out. 📚",
-            "Every step counts! Here's what we need to know. 💪",
-            "Great effort! Let's remember this one. 🧠"
-        ];
-        const randomMsg = growthMessages[Math.floor(Math.random() * growthMessages.length)];
-        window.MANYACharacterSystem.speak(randomMsg, 2500);
-    }
-    
-    // Fetch detailed solution for modal
-    let detailedSolution = '';
-    try {
-        const solutionResponse = await fetch(`/api/solution/${question.id}`);
-        if (solutionResponse.ok) {
-            const solutionData = await solutionResponse.json();
-            detailedSolution = solutionData.detailedSolution || '';
-        }
-    } catch (err) {
-        console.error('Error fetching solution:', err);
-    }
-    
-    if (!detailedSolution) {
-        detailedSolution = `The correct answer is ${correctAnswer}. ${this.getOptionText(question, correctAnswer)}. Let's remember this for next time! 📚`;
-    }
-    
-    // Use the QuestUI.showLearningModal method
-    const self = this;
-    QuestUI.showLearningModal(
-        question,
-        this.selectedOption,
-        correctAnswer,
-        this.getOptionText.bind(this),
-        function() {
-            document.querySelectorAll('.option.gentle-highlight').forEach(opt => {
-                opt.classList.remove('gentle-highlight');
+        } else {
+            console.log('   WRONG - Growth Mindset Feedback');
+            
+            // Play single error sound
+            if (window.MANYAAudioSystem && window.MANYAAudioSystem.playWrong) {
+                window.MANYAAudioSystem.playWrong();
+            }
+            
+            // Gentle gold glow
+            this.showDoubleScreenFlash('wrong');
+            
+            // Gently highlight the correct answer
+            document.querySelectorAll('.option').forEach(opt => {
+                if (opt.dataset.letter === correctAnswer) {
+                    opt.classList.add('gentle-highlight');
+                }
             });
-            self.currentQuestionIndex++;
-            self.loadNextContent();
-        },
-        detailedSolution
-    );
-}
+            
+            // Growth mindset message
+            this.showGrowthMindsetMessage();
+            
+            // Character encouragement
+            if (window.MANYACharacterSystem) {
+                const growthMessages = [
+                    "Mistakes help us grow! Let's see the correct answer. 🌱",
+                    "That's how we learn! Check this out. 📚",
+                    "Every step counts! Here's what we need to know. 💪",
+                    "Great effort! Let's remember this one. 🧠"
+                ];
+                const randomMsg = growthMessages[Math.floor(Math.random() * growthMessages.length)];
+                window.MANYACharacterSystem.speak(randomMsg, 2500);
+            }
+            
+            // Fetch detailed solution for modal
+            let detailedSolution = '';
+            try {
+                const solutionResponse = await fetch(`/api/solution/${question.id}`);
+                if (solutionResponse.ok) {
+                    const solutionData = await solutionResponse.json();
+                    detailedSolution = solutionData.detailedSolution || '';
+                }
+            } catch (err) {
+                console.error('Error fetching solution:', err);
+            }
+            
+            if (!detailedSolution) {
+                detailedSolution = `The correct answer is ${correctAnswer}. ${this.getOptionText(question, correctAnswer)}. Let's remember this for next time! 📚`;
+            }
+            
+            // Use the QuestUI.showLearningModal method
+            const self = this;
+            QuestUI.showLearningModal(
+                question,
+                this.selectedOption,
+                correctAnswer,
+                this.getOptionText.bind(this),
+                function() {
+                    document.querySelectorAll('.option.gentle-highlight').forEach(opt => {
+                        opt.classList.remove('gentle-highlight');
+                    });
+                    self.currentQuestionIndex++;
+                    self.loadNextContent();
+                },
+                detailedSolution
+            );
+             if (window.LikeButtonSystem) {
+        window.LikeButtonSystem.reset();
+    }
+        }
+    },
+    
+    // Helper to get current streak
+    async getCurrentStreak() {
+        const userId = window.App?.currentUser || 'student-001';
+        try {
+            const response = await fetch(`/api/gamification/streak/${userId}`);
+            const data = await response.json();
+            return data.current_streak || 0;
+        } catch (err) {
+            return 0;
+        }
     },
     
     // ========== Study Methods ==========
@@ -339,325 +412,201 @@ const QuestScreen = {
         QuestUI.showGrowthMindsetMessage();
     },
     
-    showLearningModal(question, correctAnswer, responseTime) {
-        const self = this;
-        QuestUI.showLearningModal(question, this.selectedOption, this.getOptionText.bind(this), function() {
-            document.querySelectorAll('.option.gentle-highlight').forEach(opt => {
-                opt.classList.remove('gentle-highlight');
-            });
-            self.currentQuestionIndex++;
-            self.loadNextContent();
-        });
-    },
-    
     showChestUnlockAnimation() {
         QuestUI.showChestUnlockAnimation();
     },
     
-    showCompletion(mastery) {
-        QuestUI.showCompletion(mastery, this.params.accuracy, () => {
-            const overlay = document.querySelector('.quest-complete-overlay');
-            if (overlay) overlay.style.display = 'none';
-            this.exit();
-        });
-    },
+showCompletion(mastery) {
+    QuestUI.showCompletion(mastery, this.params.accuracy, () => {
+        const overlay = document.querySelector('.quest-complete-overlay');
+        if (overlay) overlay.style.display = 'none';
+        // Reset progress bar when quest ends
+        if (window.ProgressBarSystem) {
+            window.ProgressBarSystem.reset();
+        }
+        this.exit();
+    });
+},
     
     // ========== Complete Quest ==========
-async completeQuest() {
-    console.log('🏁 Completing quest...');
-    
-    const totalQuestions = this.questions.length;
-    const correctAnswers = this.answers.filter(a => a.isCorrect).length;
-    const mastery = Math.min(100, Math.max(0, Math.round((correctAnswers / totalQuestions) * 100)));
-    const isQuestPassed = mastery >= 75;
-    
-    console.log(`   Mastery: ${mastery}%, Passed: ${isQuestPassed}`);
-    
-    try {
-        const userId = window.App?.currentUser || 'student-001';
-        const challengeId = this.challenge.id;
+    async completeQuest() {
+        console.log('🏁 Completing quest...');
         
-        // First, save the completed quest
-        const completeResponse = await fetch('/api/quests/complete', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                userId: userId,
-                challengeId: challengeId,
-                questId: this.questData?.questId,
-                mastery: mastery,
-                answers: this.answers
-            })
-        });
+        const totalQuestions = this.questions.length;
+        const correctAnswers = this.answers.filter(a => a.isCorrect).length;
+        const mastery = Math.min(100, Math.max(0, Math.round((correctAnswers / totalQuestions) * 100)));
+        const isQuestPassed = mastery >= 75;
         
-        const completeData = await completeResponse.json();
-        console.log('Quest completion saved:', completeData);
+        console.log(`   Mastery: ${mastery}%, Passed: ${isQuestPassed}`);
         
-        if (isQuestPassed) {
-            console.log('🎉 Quest completed! Playing celebration effects...');
-            
-            // Play quest complete sound
-            let celebrationWord = null;
-            if (window.MANYAAudioSystem && window.MANYAAudioSystem.playQuestComplete) {
-                celebrationWord = await window.MANYAAudioSystem.playQuestComplete();
-            }
-            
-            // Show word flash
-            if (celebrationWord) {
-                this.showWordFlash(celebrationWord);
-            } else {
-                this.showWordFlash('Complete');
-            }
-            
-            // Show quest complete flash
-            this.showDoubleScreenFlash('quest-complete');
-            
-            // Show chest unlock animation
-            this.showChestUnlockAnimation();
-            
-            // Standard celebration
-            if (window.ConfettiService) {
-                window.ConfettiService.questComplete();
-            }
-            
-            // Character celebration
-            if (window.MANYACharacterSystem) {
-                window.MANYACharacterSystem.speak("Quest completed! You're amazing! 🎉", 3000);
-            }
-            
-            // CHECK IF THIS WAS THE LAST QUEST IN THE CHALLENGE
-            // Get current challenge progress from the response
-            const totalQuestsInChallenge = this.challenge.totalQuests || 7;
-            const completedQuestsAfter = completeData.completedQuests || 0;
-            const isChallengeComplete = completedQuestsAfter >= totalQuestsInChallenge && isQuestPassed;
-            
-            console.log(`   Challenge check: completedQuests=${completedQuestsAfter}, totalQuests=${totalQuestsInChallenge}, isChallengeComplete=${isChallengeComplete}`);
-            
-            if (isChallengeComplete) {
-                console.log('🏆🏆🏆 CHALLENGE COMPLETE! Epic celebration starting... 🏆🏆🏆');
-                await this.celebrateChallengeComplete();
-            }
-            
-            setTimeout(() => {
-                this.showCompletion(mastery);
-            }, 2500);
-        } else {
-            this.showCompletion(mastery);
-        }
-        
-    } catch (err) {
-        console.error('Error completing quest:', err);
-        this.exit();
-    }
-},
-
-// Enhanced challenge complete celebration
-async celebrateChallengeComplete() {
-    console.log('🎉🎉🎉 CHALLENGE COMPLETE! Epic celebration starting...');
-    
-    // Play the full complete.mp3
-    try {
-        const celebrationAudio = new Audio('/multimedia_assets/audios/challenge_complete/complete.mp3');
-        celebrationAudio.volume = 0.9;
-        celebrationAudio.play().catch(err => {
-            console.log('Challenge celebration audio play failed:', err);
-        });
-        window.currentCelebrationAudio = celebrationAudio;
-    } catch (err) {
-        console.log('Error playing challenge complete audio:', err);
-    }
-    
-    // INTENSE confetti and fireworks - full screen celebration
-    if (window.ConfettiService) {
-        window.ConfettiService.challengeCompleteCelebration();
-    }
-    
-    // Multiple golden screen flashes (3 flashes for epic celebration)
-    this.showDoubleScreenFlash('challenge-complete');
-    setTimeout(() => {
-        this.showDoubleScreenFlash('challenge-complete');
-    }, 400);
-    setTimeout(() => {
-        this.showDoubleScreenFlash('challenge-complete');
-    }, 800);
-    
-    // Show challenge complete modal
-    this.showChallengeCompleteModal();
-    
-    // Character epic celebration
-    if (window.MANYACharacterSystem) {
-        window.MANYACharacterSystem.speak("CHALLENGE COMPLETE! You're a true champion! 🏆🎉✨", 5000);
-    }
-    
-    // Play additional fanfare
-    setTimeout(() => {
         try {
-            const fanfare = new Audio('/multimedia_assets/audios/fanfare-trumpets.mp3');
-            fanfare.volume = 0.7;
-            fanfare.play().catch(() => {});
-        } catch (err) {}
-    }, 500);
-},
-
-showChallengeCompleteModal() {
-    const modal = document.createElement('div');
-    modal.className = 'challenge-complete-overlay';
-    modal.innerHTML = `
-        <div class="challenge-complete-card">
-            <div class="challenge-complete-icon">🏆✨🎉</div>
-            <div class="challenge-complete-title">CHALLENGE COMPLETE!</div>
-            <div class="challenge-complete-message">
-                Congratulations! You've mastered this challenge!<br>
-                🌟 New challenges await! 🌟
-            </div>
-            <button class="challenge-complete-btn" id="close-challenge-modal">Continue Journey →</button>
-        </div>
-    `;
-    
-    document.body.appendChild(modal);
-    
-    const closeBtn = modal.querySelector('#close-challenge-modal');
-    closeBtn.onclick = () => {
-        modal.remove();
-        if (window.currentCelebrationAudio) {
-            window.currentCelebrationAudio.pause();
-            window.currentCelebrationAudio.currentTime = 0;
-            window.currentCelebrationAudio = null;
-        }
-    };
-    
-    // Auto-close after 12 seconds
-    setTimeout(() => {
-        if (modal.parentNode) {
-            modal.style.animation = 'fadeOut 0.5s ease';
-            setTimeout(() => {
-                if (modal.parentNode) modal.remove();
-            }, 500);
-        }
-    }, 12000);
-},
-
-// New method for challenge complete celebration
-async celebrateChallengeComplete() {
-    console.log('🎉🎉🎉 CHALLENGE COMPLETE! Epic celebration starting...');
-    
-    // Play the full complete.mp3
-    if (window.MANYAAudioSystem) {
-        try {
-            const celebrationAudio = new Audio('/multimedia_assets/audios/challenge_complete/complete.mp3');
-            celebrationAudio.volume = 0.9;
-            celebrationAudio.play().catch(err => {
-                console.log('Challenge celebration audio play failed:', err);
+            const userId = window.App?.currentUser || 'student-001';
+            const challengeId = this.challenge.id;
+            
+            // First, save the completed quest
+            const completeResponse = await fetch('/api/quests/complete', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    userId: userId,
+                    challengeId: challengeId,
+                    questId: this.questData?.questId,
+                    mastery: mastery,
+                    answers: this.answers
+                })
             });
-            window.currentCelebrationAudio = celebrationAudio;
+            
+            const completeData = await completeResponse.json();
+            console.log('Quest completion saved:', completeData);
+            
+            if (isQuestPassed) {
+                console.log('🎉 Quest completed! Playing celebration effects...');
+                
+                // Play quest complete sound
+                let celebrationWord = null;
+                if (window.MANYAAudioSystem && window.MANYAAudioSystem.playQuestComplete) {
+                    celebrationWord = await window.MANYAAudioSystem.playQuestComplete();
+                }
+                
+                // Show word flash
+                if (celebrationWord) {
+                    this.showWordFlash(celebrationWord);
+                } else {
+                    this.showWordFlash('Complete');
+                }
+                
+                // Show quest complete flash
+                this.showDoubleScreenFlash('quest-complete');
+                
+                // Show chest unlock animation
+                this.showChestUnlockAnimation();
+                
+                // Standard celebration
+                if (window.ConfettiService) {
+                    window.ConfettiService.questComplete();
+                }
+                
+                // Character celebration
+                if (window.MANYACharacterSystem) {
+                    window.MANYACharacterSystem.speak("Quest completed! You're amazing! 🎉", 3000);
+                }
+                
+                // CHECK IF THIS WAS THE LAST QUEST IN THE CHALLENGE
+                const totalQuestsInChallenge = this.challenge.totalQuests || 7;
+                const completedQuestsAfter = completeData.completedQuests || 0;
+                const isChallengeComplete = completedQuestsAfter >= totalQuestsInChallenge && isQuestPassed;
+                
+                console.log(`   Challenge check: completedQuests=${completedQuestsAfter}, totalQuests=${totalQuestsInChallenge}, isChallengeComplete=${isChallengeComplete}`);
+                
+                if (isChallengeComplete) {
+                    console.log('🏆🏆🏆 CHALLENGE COMPLETE! Epic celebration starting... 🏆🏆🏆');
+                    await this.celebrateChallengeComplete();
+                }
+                
+                setTimeout(() => {
+                    this.showCompletion(mastery);
+                }, 2500);
+            } else {
+                this.showCompletion(mastery);
+            }
+            
         } catch (err) {
-            console.log('Error playing challenge complete audio:', err);
+            console.error('Error completing quest:', err);
+            this.exit();
         }
-    }
+    },
     
-    // INTENSE confetti and fireworks - full screen celebration
-    if (window.ConfettiService) {
-        window.ConfettiService.challengeCompleteCelebration();
-    }
-    
-    // Show challenge complete modal (card in center, effects all around)
-    this.showChallengeCompleteModal();
-    
-    // Multiple golden screen flashes
-    this.showDoubleScreenFlash('challenge-complete');
-    setTimeout(() => {
-        this.showDoubleScreenFlash('challenge-complete');
-    }, 400);
-    
-    // Character epic celebration
-    if (window.MANYACharacterSystem) {
-        window.MANYACharacterSystem.speak("CHALLENGE COMPLETE! You're a true champion! 🏆🎉✨", 5000);
-    }
-    
-    // Play additional fanfare
-    setTimeout(() => {
-        try {
-            const fanfare = new Audio('/multimedia_assets/audios/fanfare-trumpets.mp3');
-            fanfare.volume = 0.7;
-            fanfare.play().catch(() => {});
-        } catch (err) {}
-    }, 500);
-},
-
-showChallengeCompleteModal() {
-    const modal = document.createElement('div');
-    modal.className = 'challenge-complete-overlay';
-    modal.innerHTML = `
-        <div class="challenge-complete-card">
-            <div class="challenge-complete-icon">🏆✨🎉</div>
-            <div class="challenge-complete-title">CHALLENGE COMPLETE!</div>
-            <div class="challenge-complete-message">
-                Congratulations! You've mastered this challenge!<br>
-                🌟 New challenges await! 🌟
-            </div>
-            <button class="challenge-complete-btn" id="close-challenge-modal">Continue Journey →</button>
-        </div>
-    `;
-    
-    document.body.appendChild(modal);
-    
-    const closeBtn = modal.querySelector('#close-challenge-modal');
-    closeBtn.onclick = () => {
-        modal.remove();
-        if (window.currentCelebrationAudio) {
-            window.currentCelebrationAudio.pause();
-            window.currentCelebrationAudio.currentTime = 0;
-            window.currentCelebrationAudio = null;
-        }
-    };
-    
-    // Auto-close after 10 seconds (but celebration continues)
-    setTimeout(() => {
-        if (modal.parentNode) {
-            modal.style.animation = 'fadeOut 0.5s ease';
+    // Enhanced challenge complete celebration
+    async celebrateChallengeComplete() {
+        console.log('🎉🎉🎉 CHALLENGE COMPLETE! Epic celebration starting...');
+        
+        // Use the ChallengeCelebration component if available
+        if (window.ChallengeCelebration) {
+            window.ChallengeCelebration.show();
+        } else {
+            // Fallback celebration
+            // Play the full complete.mp3
+            try {
+                const celebrationAudio = new Audio('/multimedia_assets/audios/challenge_complete/complete.mp3');
+                celebrationAudio.volume = 0.9;
+                celebrationAudio.play().catch(err => {
+                    console.log('Challenge celebration audio play failed:', err);
+                });
+                window.currentCelebrationAudio = celebrationAudio;
+            } catch (err) {
+                console.log('Error playing challenge complete audio:', err);
+            }
+            
+            // INTENSE confetti and fireworks
+            if (window.ConfettiService) {
+                window.ConfettiService.challengeCompleteCelebration();
+            }
+            
+            // Multiple golden screen flashes
+            this.showDoubleScreenFlash('challenge-complete');
             setTimeout(() => {
-                if (modal.parentNode) modal.remove();
+                this.showDoubleScreenFlash('challenge-complete');
+            }, 400);
+            setTimeout(() => {
+                this.showDoubleScreenFlash('challenge-complete');
+            }, 800);
+            
+            // Show challenge complete modal
+            this.showChallengeCompleteModal();
+            
+            // Character epic celebration
+            if (window.MANYACharacterSystem) {
+                window.MANYACharacterSystem.speak("CHALLENGE COMPLETE! You're a true champion! 🏆🎉✨", 5000);
+            }
+            
+            // Play additional fanfare
+            setTimeout(() => {
+                try {
+                    const fanfare = new Audio('/multimedia_assets/audios/fanfare-trumpets.mp3');
+                    fanfare.volume = 0.7;
+                    fanfare.play().catch(() => {});
+                } catch (err) {}
             }, 500);
         }
-    }, 10000);
-},
-
-// Show challenge complete modal
-showChallengeCompleteModal() {
-    const modal = document.createElement('div');
-    modal.className = 'challenge-complete-overlay';
-    modal.innerHTML = `
-        <div class="challenge-complete-card">
-            <div class="challenge-complete-icon">🏆</div>
-            <div class="challenge-complete-title">CHALLENGE COMPLETE!</div>
-            <div class="challenge-complete-message">
-                Congratulations! You've mastered this challenge!<br>
-                New challenges await!
+    },
+    
+    showChallengeCompleteModal() {
+        const modal = document.createElement('div');
+        modal.className = 'challenge-complete-overlay';
+        modal.innerHTML = `
+            <div class="challenge-complete-card">
+                <div class="challenge-complete-icon">🏆✨🎉</div>
+                <div class="challenge-complete-title">CHALLENGE COMPLETE!</div>
+                <div class="challenge-complete-message">
+                    Congratulations! You've mastered this challenge!<br>
+                    🌟 New challenges await! 🌟
+                </div>
+                <button class="challenge-complete-btn" id="close-challenge-modal">Continue Journey →</button>
             </div>
-            <button class="challenge-complete-btn" id="close-challenge-modal">Continue Journey →</button>
-        </div>
-    `;
-    
-    document.body.appendChild(modal);
-    
-    const closeBtn = modal.querySelector('#close-challenge-modal');
-    closeBtn.onclick = () => {
-        modal.remove();
-        // Stop celebration audio if still playing
-        if (window.currentCelebrationAudio) {
-            window.currentCelebrationAudio.pause();
-            window.currentCelebrationAudio.currentTime = 0;
-            window.currentCelebrationAudio = null;
-        }
-    };
-    
-    // Auto-close after 8 seconds (but audio continues)
-    setTimeout(() => {
-        if (modal.parentNode) {
+        `;
+        
+        document.body.appendChild(modal);
+        
+        const closeBtn = modal.querySelector('#close-challenge-modal');
+        closeBtn.onclick = () => {
             modal.remove();
-        }
-    }, 8000);
-},
+            if (window.currentCelebrationAudio) {
+                window.currentCelebrationAudio.pause();
+                window.currentCelebrationAudio.currentTime = 0;
+                window.currentCelebrationAudio = null;
+            }
+        };
+        
+        // Auto-close after 10 seconds
+        setTimeout(() => {
+            if (modal.parentNode) {
+                modal.style.animation = 'fadeOut 0.5s ease';
+                setTimeout(() => {
+                    if (modal.parentNode) modal.remove();
+                }, 500);
+            }
+        }, 10000);
+    },
     
     // ========== Lifecycle Methods ==========
     startHesitationTracking() {
@@ -673,7 +622,16 @@ showChallengeCompleteModal() {
     },
     
     exit() {
+        // Reset progress bar
+        if (window.ProgressBarSystem) {
+            window.ProgressBarSystem.reset();
+        }
+          // Reset like button system
+    if (window.LikeButtonSystem) {
+        window.LikeButtonSystem.reset();
+    }
         QuestCore.exit(this);
+   
     }
 };
 

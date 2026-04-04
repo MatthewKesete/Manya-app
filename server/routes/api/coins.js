@@ -41,5 +41,35 @@ router.post('/exchange', async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 });
-
+// Add bonus coins (for like button streak)
+router.post('/bonus', async (req, res) => {
+    const { userId, amount, reason } = req.body;
+    
+    try {
+        await coinService.initializeUser(userId);
+        
+        const result = await pool.query(
+            `UPDATE user_coins 
+             SET coin_balance = coin_balance + $2, 
+                 updated_at = CURRENT_TIMESTAMP
+             WHERE user_id = $1
+             RETURNING coin_balance`,
+            [userId, amount]
+        );
+        
+        const newBalance = result.rows[0]?.coin_balance || 0;
+        
+        console.log(`💰 Bonus ${amount} coins awarded to ${userId} for ${reason}`);
+        
+        res.json({
+            success: true,
+            amount: amount,
+            newBalance: newBalance,
+            reason: reason
+        });
+    } catch (err) {
+        console.error('Error awarding bonus coins:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
 module.exports = router;

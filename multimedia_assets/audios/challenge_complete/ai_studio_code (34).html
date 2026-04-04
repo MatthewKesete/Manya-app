@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CHALLENGE COMPLETE | MANYA ELITE</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Research-grade particle engine -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@900&family=Inter:wght@400;900&display=swap');
+    
+    :root {
+      --gold: #ffcc00;
+      --gold-glow: rgba(255, 221, 0, 0.8);
+      --emerald: #00ff88;
+    }
+
+    body {
+      background-color: #000;
+      color: white;
+      font-family: 'Inter', sans-serif;
+      overflow: hidden;
+      height: 100vh;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .font-heavy { font-family: 'Orbitron', sans-serif; font-weight: 900; }
+
+    /* RESEARCH-BASED: VISUAL OVERSTIMULATION BACKGROUND */
+    .bg-rays {
+      position: fixed;
+      inset: -50%;
+      width: 200%; height: 200%;
+      background: conic-gradient(
+        from 0deg, 
+        transparent 0deg, 
+        var(--gold-glow) 10deg, 
+        transparent 20deg,
+        var(--gold-glow) 30deg,
+        transparent 40deg
+      );
+      animation: rotateRays 15s linear infinite;
+      opacity: 0.15;
+      z-index: -1;
+    }
+
+    @keyframes rotateRays {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    /* THE JUICE: SHAKE AND PULSE */
+    .epic-pulse {
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); filter: brightness(1); }
+      50% { transform: scale(1.05); filter: brightness(1.3) drop-shadow(0 0 50px var(--gold)); }
+    }
+
+    .quest-card {
+      transform: scale(0);
+      animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+    }
+
+    @keyframes popIn {
+      to { transform: scale(1); }
+    }
+
+    .gold-gradient {
+      background: linear-gradient(180deg, #fff 0%, var(--gold) 50%, #b8860b 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      filter: drop-shadow(0 0 20px rgba(255,204,0,0.5));
+    }
+
+    #celebration-overlay {
+      display: none;
+      z-index: 100;
+      text-align: center;
+    }
+
+    /* SCREEN SHAKE TRIGGERED BY JS */
+    .shake {
+      animation: shake 0.2s infinite;
+    }
+    @keyframes shake {
+      0% { transform: translate(1px, 1px); }
+      50% { transform: translate(-2px, -1px); }
+      100% { transform: translate(1px, 1px); }
+    }
+  </style>
+</head>
+<body>
+
+<div class="bg-rays"></div>
+
+<!-- INTRO: THE "GATEWAY" (Dopamine Trigger: Anticipation) -->
+<div id="gate" class="z-50 text-center">
+  <div class="mb-4 text-emerald-400 font-heavy tracking-widest text-sm">MISSION STATUS: 100% SUCCESS</div>
+  <button onclick="igniteDopamine()" class="px-16 py-8 bg-white text-black font-heavy text-2xl hover:bg-[var(--gold)] transition-all transform hover:scale-110 active:scale-95 shadow-[0_0_100px_rgba(255,255,255,0.4)]">
+    UNLEASH REWARDS
+  </button>
+</div>
+
+<!-- THE FINALE -->
+<div id="celebration-overlay" class="w-full max-w-5xl">
+  
+  <!-- Step 1: Sequential Validation (Behavioral Reinforcement) -->
+  <div id="checklist" class="flex justify-center gap-4 mb-10">
+    <!-- Items added by JS -->
+  </div>
+
+  <!-- Step 2: The Mega Reward (Emotional Peak) -->
+  <div class="epic-pulse">
+    <h2 class="text-3xl font-heavy tracking-[1rem] text-white/80">CHALLENGE</h2>
+    <h1 class="text-[10rem] font-heavy gold-gradient leading-none mb-4">COMPLETE</h1>
+  </div>
+
+  <!-- Step 3: Social Status Rank (Dopamine High) -->
+  <div class="flex items-center justify-center gap-12 mt-8">
+    <div class="text-center">
+      <div class="text-xs font-heavy text-emerald-400 tracking-tighter">BONUS XP GAINED</div>
+      <div id="xp-counter" class="text-6xl font-heavy">0</div>
+    </div>
+    
+    <div class="relative">
+        <div class="absolute inset-0 bg-gold-glow blur-3xl opacity-50 animate-pulse"></div>
+        <img src="https://cdn-icons-png.flaticon.com/512/179/179249.png" class="w-40 h-40 relative z-10" alt="Medal">
+    </div>
+
+    <div class="text-center">
+      <div class="text-xs font-heavy text-emerald-400 tracking-tighter">NEW GLOBAL RANK</div>
+      <div class="text-6xl font-heavy gold-gradient">#1</div>
+    </div>
+  </div>
+
+  <button class="mt-20 px-12 py-4 border border-white/20 font-heavy text-xs tracking-widest hover:bg-white hover:text-black transition-all">
+    PROCEED TO NEXT CHAPTER
+  </button>
+</div>
+
+<script>
+  const applause = new Audio('complete.mp3');
+  
+  function playTick() {
+    const s = new Audio('https://www.soundjay.com/buttons/button-50.mp3');
+    s.volume = 0.2;
+    s.play();
+  }
+
+  function igniteDopamine() {
+    document.getElementById('gate').style.display = 'none';
+    document.getElementById('celebration-overlay').style.display = 'block';
+    
+    // Start 50-second applause
+    applause.play();
+
+    // 1. Build the Checklist (The "I did it" loop)
+    const checklist = document.getElementById('checklist');
+    for(let i=1; i<=5; i++) {
+        setTimeout(() => {
+            const item = document.createElement('div');
+            item.className = "quest-card bg-emerald-500/20 border border-emerald-500 p-4 rounded-lg font-heavy text-[10px]";
+            item.innerHTML = `QUEST 0${i}<br><span class="text-emerald-400">✓ VALIDATED</span>`;
+            checklist.appendChild(item);
+            playTick();
+            // Minor screen shake on each check
+            document.body.classList.add('shake');
+            setTimeout(() => document.body.classList.remove('shake'), 100);
+        }, i * 300);
+    }
+
+    // 2. TRIGGER ENDLESS CONFETTI & FIREWORKS (Visual Overstimulation)
+    startEndlessConfetti();
+
+    // 3. XP COUNTER TICKER (Growth Reinforcement)
+    setTimeout(() => {
+        let xp = 0;
+        const target = 15500;
+        const el = document.getElementById('xp-counter');
+        const interval = setInterval(() => {
+            xp += Math.floor(Math.random() * 250) + 100;
+            if (xp >= target) {
+                xp = target;
+                clearInterval(interval);
+            }
+            el.innerText = xp.toLocaleString();
+        }, 20);
+    }, 2000);
+  }
+
+  function startEndlessConfetti() {
+    const end = Date.now() + (50 * 1000); // 50 Seconds of pure chaos
+
+    // COLORS: Gold, White, Emerald, Sky
+    const colors = ['#ffcc00', '#ffffff', '#00ff88', '#00f2ff'];
+
+    (function frame() {
+      // Launch from sides (Confetti)
+      confetti({
+        particleCount: 3,
+        angle: 60,
+        spread: 55,
+        origin: { x: 0 },
+        colors: colors
+      });
+      confetti({
+        particleCount: 3,
+        angle: 120,
+        spread: 55,
+        origin: { x: 1 },
+        colors: colors
+      });
+
+      // Randomized Fireworks (Burst effect)
+      if(Math.random() > 0.95) {
+        confetti({
+            particleCount: 50,
+            startVelocity: 30,
+            spread: 360,
+            origin: { 
+                x: Math.random(), 
+                y: Math.random() - 0.2 
+            },
+            colors: colors,
+            shapes: ['circle', 'square'],
+            gravity: 0.8,
+            scalar: 1.2
+        });
+      }
+
+      if (Date.now() < end) {
+        requestAnimationFrame(frame);
+      } else {
+          // Restart loop if audio is still playing
+          if (!applause.paused) startEndlessConfetti();
+      }
+    }());
+  }
+</script>
+
+</body>
+</html>
