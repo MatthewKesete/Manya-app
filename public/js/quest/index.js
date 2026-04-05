@@ -54,24 +54,16 @@ const QuestScreen = {
     },
     
     // ========== Core Methods ==========
-    init(questData, challenge, onComplete) {
-        QuestCore.init(questData, challenge, onComplete, this);
-        
-        // Initialize progress bar
-        if (window.ProgressBarSystem) {
-            setTimeout(() => {
-                window.ProgressBarSystem.init();
-            }, 100);
-        }
-        
-        // Initialize coin animation
-        if (window.CoinAnimation) {
-            setTimeout(() => {
-                window.CoinAnimation.init();
-            }, 100);
-        }
-        // Initialize progress bar
+   init(questData, challenge, onComplete) {
+    QuestCore.init(questData, challenge, onComplete, this);
+    
+    // Create compact gem display
+    this.createCompactGemDisplay();
+    
+    // Initialize progress bar in compact container
     if (window.ProgressBarSystem) {
+        // Set custom container for progress bar
+        ProgressBarSystem.containerId = 'progress-bar-compact';
         setTimeout(() => {
             window.ProgressBarSystem.init();
         }, 100);
@@ -85,12 +77,13 @@ const QuestScreen = {
     }
     
     // Initialize like button system
-    if (window.LikeButtonSystem) {
+    if (window.LikeButtonSystem && !window.LikeButtonSystem.initialized) {
         setTimeout(() => {
             window.LikeButtonSystem.init();
+            window.LikeButtonSystem.initialized = true;
         }, 100);
     }
-    },
+},
     
     loadNextContent() {
         QuestCore.loadNextContent(this);
@@ -569,7 +562,103 @@ showCompletion(mastery) {
             }, 500);
         }
     },
+    // Create compact gem display
+createCompactGemDisplay() {
+    const container = document.getElementById('gem-display-compact');
+    if (!container) return;
     
+    container.innerHTML = `
+        <div class="compact-gems">
+            <div class="compact-gem math">
+                <img src="/multimedia_assets/gems/math_gem.svg" class="compact-gem-icon">
+                <span id="compact-math-gems">0</span>
+            </div>
+            <div class="compact-gem english">
+                <img src="/multimedia_assets/gems/english_gem.svg" class="compact-gem-icon">
+                <span id="compact-english-gems">0</span>
+            </div>
+            <div class="compact-gem science">
+                <img src="/multimedia_assets/gems/science_svg.svg" class="compact-gem-icon">
+                <span id="compact-science-gems">0</span>
+            </div>
+            <div class="compact-gem social">
+                <img src="/multimedia_assets/gems/sst_gem.svg" class="compact-gem-icon">
+                <span id="compact-social-gems">0</span>
+            </div>
+            <div class="compact-gem master">
+                <img src="/multimedia_assets/gems/master_gem.svg" class="compact-gem-icon">
+                <span id="compact-master-gems">0</span>
+            </div>
+        </div>
+    `;
+    
+    // Add CSS for compact gems
+    const style = document.createElement('style');
+    style.textContent = `
+        .compact-gems {
+            display: flex;
+            gap: 8px;
+            background: #f8fafc;
+            padding: 8px 12px;
+            border-radius: 12px;
+            flex-wrap: wrap;
+        }
+        .compact-gem {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            background: white;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.8em;
+            font-weight: 600;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .compact-gem-icon {
+            width: 18px;
+            height: 18px;
+        }
+        .compact-gem.math { color: #3b82f6; }
+        .compact-gem.english { color: #8b5cf6; }
+        .compact-gem.science { color: #10b981; }
+        .compact-gem.social { color: #f59e0b; }
+        .compact-gem.master { color: #fbbf24; }
+        .stats-row {
+            display: flex;
+            gap: 12px;
+            padding: 8px 20px;
+            background: white;
+            border-bottom: 1px solid #e2e8f0;
+            flex-wrap: wrap;
+        }
+        #progress-bar-compact {
+            flex: 2;
+            min-width: 200px;
+        }
+        #gem-display-compact {
+            flex: 1;
+            min-width: 280px;
+        }
+        @media (max-width: 768px) {
+            .stats-row {
+                flex-direction: column;
+                padding: 8px 12px;
+            }
+            .compact-gems {
+                justify-content: center;
+            }
+        }
+    `;
+    document.head.appendChild(style);
+},
+
+// Update gem display values
+updateCompactGemDisplay(subject, count) {
+    const element = document.getElementById(`compact-${subject}-gems`);
+    if (element) {
+        element.textContent = count;
+    }
+},
     showChallengeCompleteModal() {
         const modal = document.createElement('div');
         modal.className = 'challenge-complete-overlay';

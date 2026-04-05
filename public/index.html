@@ -92,8 +92,58 @@
     <template id="challenge-card"><div class="challenge-card" data-challenge-id=""><div class="challenge-icon"></div><div class="challenge-info"><h3 class="challenge-name"></h3><div class="quest-progress"><div class="quest-dots"></div><span class="progress-text"></span></div></div></div></template>
     <template id="quest-detail-view"><div class="quest-detail-container"><button class="back-btn">← Back to Challenges</button><div class="challenge-header"><div class="challenge-icon-large"></div><div class="challenge-title"><h2 id="challenge-name"></h2><p id="challenge-description"></p></div></div><div class="quests-grid" id="quests-grid"></div></div></template>
     <template id="quest-card"><div class="quest-card" data-quest-id=""><div class="quest-status-icon"></div><div class="quest-info"><h4 class="quest-name"></h4><div class="quest-meta"><span class="quest-length"></span><span class="quest-mastery"></span></div><div class="progress-bar-container" style="display: none;"><div class="progress-bar-fill"></div></div></div><div class="quest-action"></div></div></template>
-    <template id="gameplay-view"><div class="gameplay-container"><div class="gameplay-header"><button class="back-btn">← Exit Quest</button><div class="quest-info-header"><span class="current-quest-name"></span><span class="game-mode-badge"></span></div><div class="quest-progress-header"><span class="question-counter">0/0</span><span class="points-earned">⭐ 0</span></div></div><div class="gameplay-area"><div class="question-card"><div class="question-header"><span class="topic-badge"></span><span class="difficulty-badge"></span></div><div class="question-text"></div><div class="options-container" id="options-container"></div><div class="hint-display" id="hintDisplay" style="display: none;"></div></div></div><div class="gameplay-footer"><button class="hint-btn" id="hintBtn">💡 Hint</button><button class="submit-btn" id="submitBtn" disabled>✅ Submit Answer</button><div class="timer-display" style="display: none;">⏱️ <span>00</span></div></div><div class="quest-complete-overlay" style="display: none;"><div class="complete-content"><h2>🎉 Quest Complete!</h2><div class="mastery-score"></div><div class="earned-rewards"></div><button class="continue-btn">Continue</button></div></div></div></template>
+    <template id="gameplay-view">
+    <div class="gameplay-container">
+        <div class="gameplay-header">
+            <button class="back-btn">← Exit Quest</button>
+            <div class="quest-info-header">
+                <span class="current-quest-name"></span>
+                <span class="game-mode-badge"></span>
+            </div>
+            <div class="quest-progress-header">
+                <span class="question-counter">0/0</span>
+                <span class="points-earned">⭐ 0</span>
+                <div class="animated-coin-display" id="compact-coin-display">
+                    <span class="coin-icon">🪙</span>
+                    <span id="compact-coin-balance">0</span>
+                </div>
+            </div>
+        </div>
 
+        <!-- Compact Stats Row -->
+        <div class="stats-row">
+            <div id="gem-display-compact"></div>
+            <div id="progress-bar-compact"></div>
+        </div>
+
+        <div class="gameplay-area">
+            <div class="question-card">
+                <div class="question-header">
+                    <span class="topic-badge"></span>
+                    <span class="difficulty-badge"></span>
+                </div>
+                <div class="question-text"></div>
+                <div class="options-container" id="options-container"></div>
+                <div class="hint-display" id="hintDisplay" style="display: none;"></div>
+            </div>
+        </div>
+
+        <div class="gameplay-footer">
+            <button class="hint-btn" id="hintBtn">💡 Hint</button>
+            <button class="submit-btn" id="submitBtn" disabled>✅ Submit Answer</button>
+            <div class="timer-display" style="display: none;">⏱️ <span>00</span></div>
+        </div>
+
+        <div class="quest-complete-overlay" style="display: none;">
+            <div class="complete-content">
+                <h2>🎉 Quest Complete!</h2>
+                <div class="mastery-score"></div>
+                <div class="earned-rewards"></div>
+                <button class="continue-btn">Continue</button>
+            </div>
+        </div>
+    </div>
+</template>
     <!-- Scripts - Load in correct order -->
     <script type="module" src="/js/simulations/app-shell/router.js"></script>
     <script src="js/components/audioSystem.js"></script>

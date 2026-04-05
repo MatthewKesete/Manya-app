@@ -1801,3 +1801,233 @@ model-viewer {
     80% { opacity: 0.5; }
     100% { opacity: 0; }
 }
+/* ===== COMPACT QUEST LAYOUT ===== */
+.gameplay-container {
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 80px);
+    max-height: calc(100vh - 80px);
+    overflow: hidden;
+}
+
+.gameplay-header {
+    flex-shrink: 0;
+    padding: 12px 20px;
+}
+
+.gameplay-area {
+    flex: 1;
+    overflow-y: auto;
+    padding: 15px 20px;
+    padding-bottom: 15px;
+}
+
+/* Compact Dashboard Section */
+.dashboard-section {
+    padding: 12px;
+    margin-bottom: 12px;
+}
+
+.psych-params-grid {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.param-card {
+    padding: 8px;
+}
+
+.param-value {
+    font-size: 1.2em;
+}
+
+.param-label {
+    font-size: 0.7em;
+}
+
+/* Gem Display Compact */
+.gem-display-container {
+    padding: 10px;
+    margin-bottom: 12px;
+}
+
+.gem-header h3 {
+    font-size: 0.9em;
+    margin-bottom: 8px;
+}
+
+.gem-grid {
+    grid-template-columns: repeat(5, 1fr);
+    gap: 6px;
+}
+
+.gem-card {
+    padding: 5px;
+}
+
+.gem-icon {
+    width: 25px;
+    height: 25px;
+}
+
+.gem-name {
+    font-size: 0.6em;
+}
+
+.gem-count {
+    font-size: 0.9em;
+}
+
+/* Progress Bar Compact */
+.mastery-progress-container {
+    padding: 12px;
+    margin-bottom: 15px;
+}
+
+.progress-header {
+    margin-bottom: 8px;
+}
+
+.progress-label {
+    font-size: 0.8em;
+}
+
+.progress-percentage {
+    font-size: 1em;
+}
+
+.progress-bar-bg {
+    height: 8px;
+}
+
+.progress-stats {
+    margin-top: 8px;
+    padding-top: 8px;
+}
+
+.stat-value {
+    font-size: 1em;
+}
+
+.stat-label {
+    font-size: 0.65em;
+}
+
+/* Coin Display Compact */
+.animated-coin-display {
+    padding: 4px 12px;
+}
+
+.coin-flip-icon {
+    font-size: 1.2em;
+}
+
+.coin-balance-number {
+    font-size: 1em;
+}
+
+/* Question Card Compact */
+.question-card {
+    padding: 15px;
+    margin-bottom: 15px;
+}
+
+.question-header {
+    margin-bottom: 12px;
+}
+
+.topic-badge, .difficulty-badge {
+    padding: 4px 10px;
+    font-size: 0.8em;
+}
+
+.question-text {
+    font-size: 1.1em;
+    margin-bottom: 20px;
+    line-height: 1.4;
+}
+
+.options-container {
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.option {
+    padding: 10px 15px;
+    font-size: 0.95em;
+}
+
+.option-letter {
+    margin-right: 10px;
+}
+
+/* Gameplay Footer Compact */
+.gameplay-footer {
+    flex-shrink: 0;
+    padding: 12px 20px;
+    gap: 12px;
+}
+
+.hint-btn, .submit-btn {
+    padding: 10px 20px;
+    font-size: 0.9em;
+    min-width: 100px;
+}
+
+/* Mobile Adjustments */
+@media (max-width: 768px) {
+    .gameplay-container {
+        height: calc(100vh - 60px);
+        max-height: calc(100vh - 60px);
+    }
+    
+    .psych-params-grid {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 6px;
+    }
+    
+    .gem-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+    
+    .progress-stats {
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+    
+    .question-text {
+        font-size: 1em;
+    }
+    
+    .option {
+        padding: 8px 12px;
+        font-size: 0.85em;
+    }
+}
+
+/* Two Row Layout for Stats */
+.stats-row {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 15px;
+    flex-wrap: wrap;
+}
+
+.stats-row .gem-display-container {
+    flex: 2;
+    margin-bottom: 0;
+}
+
+.stats-row .progress-bar-container {
+    flex: 3;
+    margin-bottom: 0;
+}
+
+/* Hide psychological params if needed - optional */
+@media (max-height: 700px) {
+    .dashboard-section {
+        display: none;
+    }
+}
