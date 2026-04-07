@@ -257,7 +257,30 @@ const QuestStudy = {
             const simElement = await SimulationLoader.loadSimulation({ ...question, mode_sim: question.mode_sim || 'labeling' });
             simContainer.appendChild(simElement);
             
-            this.setupLabelingSim(question, context);
+            // Check simulation mode and setup accordingly
+            if (question.mode_sim === 'study') {
+                // Update header to show study mode
+                const counterEl = document.querySelector('.question-counter');
+                if (counterEl) {
+                    counterEl.innerHTML = '📚 <span style="color: #9f7aea;">Study Guide</span>';
+                }
+                
+                const questionText = document.querySelector('.question-text');
+                if (questionText) {
+                    questionText.innerHTML = `<span style="color: #9f7aea;">📚 STUDY MODE:</span> ${question.title || 'Review this topic before continuing'}`;
+                }
+                
+                // Hide submit and hint buttons for study mode
+                const submitBtn = document.querySelector('.submit-btn');
+                const hintBtn = document.querySelector('.hint-btn');
+                if (submitBtn) submitBtn.style.display = 'none';
+                if (hintBtn) hintBtn.style.display = 'none';
+                
+                this.addStudyMessage();
+                this.setupStudyContinueButton(question, context);
+            } else {
+                this.setupLabelingSim(question, context);
+            }
         } catch (err) {
             console.error('Error loading simulation:', err);
         }
