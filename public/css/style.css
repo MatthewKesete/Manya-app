@@ -539,12 +539,14 @@ body {
     box-shadow: 0 10px 40px rgba(0,0,0,0.1);
     display: flex;
     flex-direction: column;
-    height: 100%;
-    min-height: 700px;
+    max-height: calc(100vh - 120px);
+    min-height: 520px;
     position: relative;
+    overflow: hidden;
 }
 
 .gameplay-header {
+    position: relative;
     background: #f7fafc;
     padding: 20px 30px;
     display: flex;
@@ -604,6 +606,7 @@ body {
 
 .gameplay-area {
     flex: 1;
+    min-height: 0;
     overflow-y: auto;
     padding: 30px;
     padding-bottom: 100px;

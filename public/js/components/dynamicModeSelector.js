@@ -24,6 +24,7 @@ const DynamicModeSelector = {
     speedTimerInterval: null,
     timeLeft: 0,
     timerCallbacks: {},
+    drumRollAudio: null,
     
     // Reverse mode state
     reverseModeActive: false,
@@ -155,7 +156,10 @@ const DynamicModeSelector = {
                 const drumRoll = new Audio('/multimedia_assets/audios/drum-roll.mp3');
                 drumRoll.volume = 0.6;
                 await drumRoll.play();
-            } catch (err) {}
+                this.drumRollAudio = drumRoll;
+            } catch (err) {
+                this.drumRollAudio = null;
+            }
         }
         
         // Start countdown
@@ -241,6 +245,14 @@ const DynamicModeSelector = {
             this.speedTimerInterval = null;
         }
         this.speedTimerActive = false;
+        
+        if (this.drumRollAudio) {
+            try {
+                this.drumRollAudio.pause();
+                this.drumRollAudio.currentTime = 0;
+            } catch (err) {}
+            this.drumRollAudio = null;
+        }
         
         const timerDiv = document.getElementById('speed-timer');
         if (timerDiv) timerDiv.style.display = 'none';
@@ -463,29 +475,33 @@ triggerLoveReaction() {
         style.textContent = `
             /* Speed Timer Styles */
             .speed-timer {
+                position: absolute;
+                top: 10px;
+                right: 16px;
                 background: linear-gradient(135deg, #1a1a2e, #16213e);
                 border-radius: 10px;
-                padding: 6px 12px;
+                padding: 6px 10px;
                 text-align: center;
                 color: white;
-                min-width: 150px;
+                min-width: 130px;
                 animation: timerPulse 1s infinite;
-                font-size: 0.92em;
+                font-size: 0.88em;
+                box-shadow: 0 12px 30px rgba(0,0,0,0.25);
             }
             
             .timer-label {
-                font-size: 9px;
-                letter-spacing: 1.5px;
+                font-size: 8px;
+                letter-spacing: 1px;
                 color: #fbbf24;
-                margin-bottom: 4px;
+                margin-bottom: 3px;
             }
             
             .timer-bar-container {
                 background: #2d3748;
-                border-radius: 10px;
-                height: 6px;
+                border-radius: 8px;
+                height: 5px;
                 overflow: hidden;
-                margin: 5px 0;
+                margin: 4px 0;
             }
             
             .timer-bar {

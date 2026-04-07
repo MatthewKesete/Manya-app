@@ -123,7 +123,7 @@ async submitAnswer() {
     });
     
     const responseTime = Date.now() - this.questionStartTime;
-    const question = this.questions[this.currentQuestionIndex];
+    const question = this.currentQuestion || this.questions[this.currentQuestionIndex];
     const correctAnswer = window.QuestUtils.extractCorrectLetter(question.correctAnswer);
     const isCorrect = this.selectedOption === correctAnswer;
     
@@ -213,6 +213,14 @@ async submitAnswer() {
     const streak = await this.getCurrentStreak();
     if (window.ProgressBarSystem) {
         window.ProgressBarSystem.updateProgress(correctSoFar, totalCount, streak);
+    }
+    
+    // If speed mode was active, stop it when the user submits
+    if (window.DynamicModeSelector && window.DynamicModeSelector.speedTimerActive) {
+        if (isCorrect && window.DynamicModeSelector.timerCallbacks?.onSuccess) {
+            window.DynamicModeSelector.timerCallbacks.onSuccess();
+        }
+        window.DynamicModeSelector.stopSpeedTimer();
     }
     
     // Check for love reaction (4 consecutive correct) - BEFORE playing sounds
@@ -354,13 +362,112 @@ async loadQuestionWithMode(index) {
     const mode = await this.getNextQuestionMode();
     console.log(`🎮 Loading question ${index + 1} with mode: ${mode}`);
     
-    if (mode === 'speedTimer' && this.currentQuestionIndex >= 2) { // Only quest 3-5
+    if (mode === 'speedTimer' && (this.currentQuestionIndex >= 2 || (window.DynamicModeSelector && window.DynamicModeSelector.forcedMode === 'speedTimer'))) {
         this.loadSpeedTimerQuestion(this.questions[index]);
     } else if (mode === 'reverse') {
         this.loadReverseQuestion(this.questions[index]);
     } else {
         this.loadNormalQuestion(index);
     }
+},
+
+loadNormalQuestion(index) {
+    window.QuestCore.loadQuestion(index, this);
+},
+
+loadSpeedTimerQuestion(question) {
+    // Load the question normally, then start the dramatic countdown overlay
+    this.loadNormalQuestion(this.currentQuestionIndex);
+    if (window.DynamicModeSelector) {
+        window.DynamicModeSelector.startSpeedTimer(
+            question,
+            () => this.handleSpeedTimerTimeout(),
+            () => window.DynamicModeSelector.celebrateSpeedWin(),
+            35
+        ).catch(() => {});
+    }
+},
+
+async handleSpeedTimerTimeout() {
+    if (!window.DynamicModeSelector || !window.DynamicModeSelector.speedTimerActive) return;
+
+    console.log('⏰ Speed timer expired - treating as timeout failure');
+    window.DynamicModeSelector.stopSpeedTimer();
+
+    // Prevent further input
+    document.querySelectorAll('.option').forEach(opt => opt.style.pointerEvents = 'none');
+    if (this.submitBtn) this.submitBtn.disabled = true;
+    if (this.hintBtn) this.hintBtn.disabled = true;
+
+    const question = this.currentQuestion || this.questions[this.currentQuestionIndex];
+    const correctAnswer = window.QuestUtils.extractCorrectLetter(question.correctAnswer);
+
+    this.consecutiveCorrect = 0;
+    if (window.LikeButtonSystem) {
+        window.LikeButtonSystem.reset();
+    }
+
+    this.answers.push({
+        questionId: question.id,
+        selectedAnswer: null,
+        correctAnswer: correctAnswer,
+        isCorrect: false,
+        timeSpent: (window.DynamicModeSelector && window.DynamicModeSelector.timeLeft >= 0) ? ((35 - window.DynamicModeSelector.timeLeft) * 1000) : 35000,
+        hintUsed: this.hintUsed,
+        answerChanged: this.answerChanged,
+        changeCount: this.changeCount,
+        hesitationCount: this.hesitationCount
+    });
+
+    const correctSoFar = this.answers.filter(a => a.isCorrect).length;
+    this.params.accuracy = (correctSoFar / this.answers.length) * 100;
+    QuestRewards.updateParameterDisplays(this.params, this.answers);
+
+    const streak = await this.getCurrentStreak();
+    if (window.ProgressBarSystem) {
+        window.ProgressBarSystem.updateProgress(correctSoFar, this.answers.length, streak);
+    }
+
+    if (window.MANYAAudioSystem && window.MANYAAudioSystem.playWrong) {
+        window.MANYAAudioSystem.playWrong();
+    }
+    this.showDoubleScreenFlash('wrong');
+    this.showGrowthMindsetMessage();
+    window.QuestUI.showWordFlash('Time');
+
+    setTimeout(() => {
+        this.currentQuestionIndex++;
+        this.loadNextContent();
+    }, 1500);
+},
+
+loadReverseQuestion(question) {
+    if (!window.DynamicModeSelector) {
+        return this.loadNormalQuestion(this.currentQuestionIndex);
+    }
+
+    const reverseData = window.DynamicModeSelector.createReverseQuestion(question, this.questions);
+    if (!reverseData) {
+        return this.loadNormalQuestion(this.currentQuestionIndex);
+    }
+
+    const reverseQuestion = {
+        ...question,
+        text: `🔁 REVERSE MODE: Which question best matches this answer?\n\n${reverseData.answerShown}`,
+        options: {},
+        correctAnswer: ''
+    };
+
+    const letters = ['A', 'B', 'C', 'D'];
+    reverseData.options.forEach((option, idx) => {
+        const letter = letters[idx];
+        reverseQuestion.options[letter] = option.text;
+        if (option.isCorrect) {
+            reverseQuestion.correctAnswer = letter;
+        }
+    });
+
+    window.QuestCore.loadQuestion(this.currentQuestionIndex, this, reverseQuestion);
 },  
     // Helper to get current streak
     async getCurrentStreak() {
@@ -476,6 +583,10 @@ showCompletion(mastery) {
     // ========== Complete Quest ==========
     async completeQuest() {
         console.log('🏁 Completing quest...');
+        
+        if (window.DynamicModeSelector && window.DynamicModeSelector.speedTimerActive) {
+            window.DynamicModeSelector.stopSpeedTimer();
+        }
         
         const totalQuestions = this.questions.length;
         const correctAnswers = this.answers.filter(a => a.isCorrect).length;
@@ -682,6 +793,9 @@ createCompactGemDisplay() {
             background: white;
             border-bottom: 1px solid #e2e8f0;
             flex-wrap: wrap;
+            position: sticky;
+            top: 0;
+            z-index: 40;
         }
         #progress-bar-compact {
             flex: 2;

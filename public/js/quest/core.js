@@ -93,20 +93,25 @@ const QuestCore = {
         }
         
         if (context.currentQuestionIndex < context.questions.length) {
-            this.loadQuestion(context.currentQuestionIndex, context);
+            if (typeof context.loadQuestionWithMode === 'function') {
+                context.loadQuestionWithMode(context.currentQuestionIndex);
+            } else {
+                this.loadQuestion(context.currentQuestionIndex, context);
+            }
         } else {
             context.completeQuest();
         }
     },
 
-loadQuestion(index, context) {
+loadQuestion(index, context, overrideQuestion = null) {
     if (index >= context.questions.length) {
         context.completeQuest();
         return;
     }
     
     context.currentQuestionIndex = index;
-    const question = context.questions[index];
+    const question = overrideQuestion || context.questions[index];
+    context.currentQuestion = question;
     
     // Make sure options container is visible and cleared
     const optionsContainer = document.getElementById('options-container');
