@@ -18,6 +18,7 @@
             wrong: false,
             quest_complete: false
         },
+        lastPlayedTime: 0,
         
         async init() {
             console.log('🎵 Audio system initializing...');
@@ -54,9 +55,17 @@
             this.loaded[folder] = true;
         },
         
-        // Play random sound from correct folder
+        // Play random sound from correct folder - prevents duplicate within 500ms
         async playCorrect() {
             if (!this.enabled) return null;
+            
+            // Prevent duplicate plays within 500ms
+            const now = Date.now();
+            if (now - this.lastPlayedTime < 500) {
+                console.log('🎵 Skipping duplicate correct sound');
+                return null;
+            }
+            this.lastPlayedTime = now;
             
             if (!this.loaded.correct) {
                 await this.loadAudios('correct');
@@ -90,7 +99,7 @@
             }
         },
         
-        // Play single error sound for wrong answers
+        // Play single error sound
         playWrong() {
             if (!this.enabled) return;
             

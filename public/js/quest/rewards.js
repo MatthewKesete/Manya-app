@@ -1,5 +1,5 @@
 // quest/rewards.js - Reward Systems
-export const QuestRewards = {
+const QuestRewards = {
     async trackEmotion(userId, emotion, intensity, context, responseTime) {
         try {
             await fetch('/api/gamification/emotion', {
@@ -108,3 +108,5 @@ export const QuestRewards = {
         if (hintCountEl) hintCountEl.textContent = `${hintCount} used`;
     }
 };
+
+window.QuestRewards = QuestRewards;

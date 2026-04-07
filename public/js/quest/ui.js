@@ -1,5 +1,5 @@
 // quest/ui.js - UI Effects and Animations
-export const QuestUI = {
+const QuestUI = {
 showDoubleScreenFlash(type) {
     const existing = document.querySelector('.screen-flash');
     if (existing) existing.remove();
@@ -223,3 +223,5 @@ showCompletion(mastery, accuracy, onContinue) {
     overlay.style.display = 'flex';
 },
 };
+
+window.QuestUI = QuestUI;

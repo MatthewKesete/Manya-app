@@ -1,11 +1,4 @@
 // quest/index.js - Main QuestScreen Object
-import { QuestUtils } from './utils.js';
-import { QuestUI } from './ui.js';
-import { QuestRewards } from './rewards.js';
-import { QuestAnswer } from './answer.js';
-import { QuestStudy } from './study.js';
-import { QuestCore } from './core.js';
-
 const QuestScreen = {
     // Data properties
     questData: null,
@@ -55,11 +48,15 @@ const QuestScreen = {
     
     // ========== Core Methods ==========
    init(questData, challenge, onComplete) {
-    QuestCore.init(questData, challenge, onComplete, this);
+    window.QuestCore.init(questData, challenge, onComplete, this);
     
     // Create compact gem display
     this.createCompactGemDisplay();
-    
+     // Initialize Dynamic Mode Selector
+    if (window.DynamicModeSelector) {
+        window.DynamicModeSelector.init();
+    }
+
     // Initialize progress bar in compact container
     if (window.ProgressBarSystem) {
         // Set custom container for progress bar
@@ -86,229 +83,285 @@ const QuestScreen = {
 },
     
     loadNextContent() {
-        QuestCore.loadNextContent(this);
+        window.QuestCore.loadNextContent(this);
     },
     
     loadQuestion(index) {
-        QuestCore.loadQuestion(index, this);
+        window.QuestCore.loadQuestion(index, this);
     },
     
     // ========== Answer Methods ==========
     selectOption(letter) {
-        QuestAnswer.selectOption(letter, this);
+        window.QuestAnswer.selectOption(letter, this);
     },
     
     renderOptions(question) {
-        QuestAnswer.renderOptions(question, (letter) => this.selectOption(letter));
+        window.QuestAnswer.renderOptions(question, (letter) => this.selectOption(letter));
     },
     
     async getHint() {
         const question = this.questions[this.currentQuestionIndex];
-        await QuestAnswer.getHint(question.id, this.hintDisplay, (used) => { this.hintUsed = used; }, this.hintBtn);
+        await window.QuestAnswer.getHint(question.id, this.hintDisplay, (used) => { this.hintUsed = used; }, this.hintBtn);
     },
     
-    async submitAnswer() {
-        console.log('🔵 submitAnswer called');
-        
-        if (!this.selectedOption || this.answerSubmitted) {
-            console.log('   Blocked - no selection or already submitted');
-            return;
+async submitAnswer() {
+    console.log('🔵 submitAnswer called');
+    
+    if (!this.selectedOption || this.answerSubmitted) {
+        console.log('   Blocked - no selection or already submitted');
+        return;
+    }
+    
+    if (this.hesitationTimer) clearInterval(this.hesitationTimer);
+    
+    this.answerSubmitted = true;
+    if (this.submitBtn) this.submitBtn.disabled = true;
+    if (this.hintBtn) this.hintBtn.disabled = true;
+    
+    document.querySelectorAll('.option').forEach(opt => {
+        opt.style.pointerEvents = 'none';
+    });
+    
+    const responseTime = Date.now() - this.questionStartTime;
+    const question = this.questions[this.currentQuestionIndex];
+    const correctAnswer = window.QuestUtils.extractCorrectLetter(question.correctAnswer);
+    const isCorrect = this.selectedOption === correctAnswer;
+    
+    console.log(`   Answer: ${this.selectedOption}, Correct: ${correctAnswer}, Result: ${isCorrect ? '✅' : '❌'}`);
+    
+    // Track consecutive correct answers FIRST
+    if (isCorrect) {
+        this.consecutiveCorrect = (this.consecutiveCorrect || 0) + 1;
+        console.log(`   Consecutive correct: ${this.consecutiveCorrect}`);
+    } else {
+        this.consecutiveCorrect = 0;
+        if (window.LikeButtonSystem) {
+            window.LikeButtonSystem.reset();
         }
+    }
+    
+    // Track rewards
+    let coinResult = null;
+    try {
+        await window.QuestRewards.trackEmotion(window.App?.currentUser || 'student-001', 
+            isCorrect ? 'confident' : 'frustrated', isCorrect ? 80 : 60, 'answer_submitted', responseTime);
+        await window.QuestRewards.trackReward(window.App?.currentUser || 'student-001', 
+            isCorrect, this.hintUsed, this.currentSubject, (awarded) => window.QuestUI.showRewardAnimation(awarded));
+        await window.QuestRewards.updateStreak(window.App?.currentUser || 'student-001', isCorrect, window.MANYACharacterSystem);
+        coinResult = await window.QuestRewards.updateCoins(window.App?.currentUser || 'student-001', 
+            isCorrect, this.hintUsed, (balance) => window.QuestRewards.updateCoinDisplay(balance));
         
-        if (this.hesitationTimer) clearInterval(this.hesitationTimer);
-        
-        this.answerSubmitted = true;
-        if (this.submitBtn) this.submitBtn.disabled = true;
-        if (this.hintBtn) this.hintBtn.disabled = true;
-        
-        document.querySelectorAll('.option').forEach(opt => {
-            opt.style.pointerEvents = 'none';
-        });
-        
-        const responseTime = Date.now() - this.questionStartTime;
-        const question = this.questions[this.currentQuestionIndex];
-        const correctAnswer = QuestUtils.extractCorrectLetter(question.correctAnswer);
-        const isCorrect = this.selectedOption === correctAnswer;
-        
-        console.log(`   Answer: ${this.selectedOption}, Correct: ${correctAnswer}, Result: ${isCorrect ? '✅' : '❌'}`);
-        
-        // Track rewards
-        let coinResult = null;
-        try {
-            await QuestRewards.trackEmotion(window.App?.currentUser || 'student-001', 
-                isCorrect ? 'confident' : 'frustrated', isCorrect ? 80 : 60, 'answer_submitted', responseTime);
-            await QuestRewards.trackReward(window.App?.currentUser || 'student-001', 
-                isCorrect, this.hintUsed, this.currentSubject, (awarded) => QuestUI.showRewardAnimation(awarded));
-            await QuestRewards.updateStreak(window.App?.currentUser || 'student-001', isCorrect, window.MANYACharacterSystem);
-            coinResult = await QuestRewards.updateCoins(window.App?.currentUser || 'student-001', 
-                isCorrect, this.hintUsed, (balance) => QuestRewards.updateCoinDisplay(balance));
+        // Enhanced coin animation with flying coins
+        if (coinResult && coinResult.coinChange !== undefined) {
+            const sourceEl = document.querySelector('.option.selected') || this.submitBtn;
             
-            // Enhanced coin animation with flying coins
-            if (coinResult && coinResult.coinChange !== undefined) {
-                // Find source element for flying coin
-                const sourceEl = document.querySelector('.option.selected') || this.submitBtn;
-                
-                if (coinResult.coinChange > 0) {
-                    if (window.CoinAnimation) {
-                        await window.CoinAnimation.addCoins(coinResult.coinChange, sourceEl);
-                    }
-                    QuestUI.showCoinAnimation(coinResult.coinChange);
-                } else if (coinResult.coinChange < 0) {
-                    if (window.CoinAnimation) {
-                        await window.CoinAnimation.deductCoins(Math.abs(coinResult.coinChange));
-                    }
-                    QuestUI.showCoinAnimation(coinResult.coinChange);
+            if (coinResult.coinChange > 0) {
+                if (window.CoinAnimation) {
+                    await window.CoinAnimation.addCoins(coinResult.coinChange, sourceEl);
                 }
+                window.QuestUI.showCoinAnimation(coinResult.coinChange);
+            } else if (coinResult.coinChange < 0) {
+                if (window.CoinAnimation) {
+                    await window.CoinAnimation.deductCoins(Math.abs(coinResult.coinChange));
+                }
+                window.QuestUI.showCoinAnimation(coinResult.coinChange);
             }
-        } catch (err) {
-            console.error('Error tracking rewards:', err);
+        }
+    } catch (err) {
+        console.error('Error tracking rewards:', err);
+    }
+    
+    // Update UI highlighting
+    document.querySelectorAll('.option').forEach(opt => {
+        if (opt.dataset.letter === correctAnswer) {
+            opt.classList.add('correct');
+        } else if (opt.dataset.letter === this.selectedOption && !isCorrect) {
+            opt.classList.add('incorrect');
+        }
+    });
+    
+    // Store the answer
+    this.answers.push({
+        questionId: question.id,
+        selectedAnswer: this.selectedOption,
+        correctAnswer: correctAnswer,
+        isCorrect: isCorrect,
+        timeSpent: responseTime,
+        hintUsed: this.hintUsed,
+        answerChanged: this.answerChanged,
+        changeCount: this.changeCount,
+        hesitationCount: this.hesitationCount
+    });
+    
+    console.log(`   Answer stored, total answers: ${this.answers.length}`);
+    
+    // Update points display
+    const pointsSpan = document.querySelector('.points-earned');
+    if (pointsSpan) {
+        const pointsEarned = isCorrect ? (this.hintUsed ? 2 : 3) : 0;
+        const currentPoints = parseInt(pointsSpan.textContent.split(' ')[1]) || 0;
+        pointsSpan.textContent = `⭐ ${currentPoints + pointsEarned}`;
+    }
+    
+    // Update accuracy
+    const correctSoFar = this.answers.filter(a => a.isCorrect).length;
+    this.params.accuracy = (correctSoFar / this.answers.length) * 100;
+    QuestRewards.updateParameterDisplays(this.params, this.answers);
+    
+    // Update progress bar
+    const totalCount = this.answers.length;
+    const streak = await this.getCurrentStreak();
+    if (window.ProgressBarSystem) {
+        window.ProgressBarSystem.updateProgress(correctSoFar, totalCount, streak);
+    }
+    
+    // Check for love reaction (4 consecutive correct) - BEFORE playing sounds
+    if (isCorrect && this.consecutiveCorrect >= 4) {
+        console.log('💕 LOVE REACTION TRIGGERED!');
+        if (window.DynamicModeSelector) {
+            window.DynamicModeSelector.triggerLoveReaction();
+        }
+        this.consecutiveCorrect = 0; // Reset after triggering
+    }
+    
+    // Check for earthquake (near 100% mastery)
+    const masteryPercentage = (correctSoFar / this.answers.length) * 100;
+    const remainingQuestions = this.questions.length - this.currentQuestionIndex - 1;
+    if (window.DynamicModeSelector) {
+        window.DynamicModeSelector.checkEarthquake(masteryPercentage, remainingQuestions);
+    }
+    
+    // Handle based on correct/wrong
+    if (isCorrect) {
+        console.log('   CORRECT - Playing effects');
+        
+        window.QuestUI.showDoubleScreenFlash('correct');
+        
+        // Play sound ONLY ONCE
+        let word = null;
+        if (window.MANYAAudioSystem) {
+            word = await window.MANYAAudioSystem.playCorrect();
         }
         
-        // Update UI highlighting
+        if (word) {
+            window.QuestUI.showWordFlash(word);
+        } else {
+            window.QuestUI.showWordFlash('Great');
+        }
+        
+        // Character reaction - NO SOUND
+        if (window.MANYACharacterSystem) {
+            window.MANYACharacterSystem.speak(window.MANYACharacterSystem.getCharacter().messages.correct, 2000);
+        }
+        
+        // Like button tracking (after sound)
+        if (window.LikeButtonSystem) {
+            window.LikeButtonSystem.recordCorrect();
+        }
+        
+        setTimeout(() => {
+            this.currentQuestionIndex++;
+            console.log(`   Advancing to question ${this.currentQuestionIndex + 1}`);
+            this.loadNextContent();
+        }, 1500);
+        
+    } else {
+        console.log('   WRONG - Growth Mindset Feedback');
+        
+        // Play single error sound
+        if (window.MANYAAudioSystem && window.MANYAAudioSystem.playWrong) {
+            window.MANYAAudioSystem.playWrong();
+        }
+        
+        // Gentle gold glow
+        this.showDoubleScreenFlash('wrong');
+        
+        // Gently highlight the correct answer
         document.querySelectorAll('.option').forEach(opt => {
             if (opt.dataset.letter === correctAnswer) {
-                opt.classList.add('correct');
-            } else if (opt.dataset.letter === this.selectedOption && !isCorrect) {
-                opt.classList.add('incorrect');
+                opt.classList.add('gentle-highlight');
             }
         });
         
-        // Store the answer
-        this.answers.push({
-            questionId: question.id,
-            selectedAnswer: this.selectedOption,
-            correctAnswer: correctAnswer,
-            isCorrect: isCorrect,
-            timeSpent: responseTime,
-            hintUsed: this.hintUsed,
-            answerChanged: this.answerChanged,
-            changeCount: this.changeCount,
-            hesitationCount: this.hesitationCount
-        });
+        // Growth mindset message
+        this.showGrowthMindsetMessage();
         
-        console.log(`   Answer stored, total answers: ${this.answers.length}`);
-        
-        // Update points display
-        const pointsSpan = document.querySelector('.points-earned');
-        if (pointsSpan) {
-            const pointsEarned = isCorrect ? (this.hintUsed ? 2 : 3) : 0;
-            const currentPoints = parseInt(pointsSpan.textContent.split(' ')[1]) || 0;
-            pointsSpan.textContent = `⭐ ${currentPoints + pointsEarned}`;
+        // Character encouragement
+        if (window.MANYACharacterSystem) {
+            const growthMessages = [
+                "Mistakes help us grow! Let's see the correct answer. 🌱",
+                "That's how we learn! Check this out. 📚",
+                "Every step counts! Here's what we need to know. 💪",
+                "Great effort! Let's remember this one. 🧠"
+            ];
+            const randomMsg = growthMessages[Math.floor(Math.random() * growthMessages.length)];
+            window.MANYACharacterSystem.speak(randomMsg, 2500);
         }
         
-        // Update accuracy
-        const correctSoFar = this.answers.filter(a => a.isCorrect).length;
-        this.params.accuracy = (correctSoFar / this.answers.length) * 100;
-        QuestRewards.updateParameterDisplays(this.params, this.answers);
-        
-        // Update progress bar
-        const totalCount = this.answers.length;
-        const streak = await this.getCurrentStreak();
-        if (window.ProgressBarSystem) {
-            window.ProgressBarSystem.updateProgress(correctSoFar, totalCount, streak);
+        // Fetch detailed solution for modal
+        let detailedSolution = '';
+        try {
+            const solutionResponse = await fetch(`/api/solution/${question.id}`);
+            if (solutionResponse.ok) {
+                const solutionData = await solutionResponse.json();
+                detailedSolution = solutionData.detailedSolution || '';
+            }
+        } catch (err) {
+            console.error('Error fetching solution:', err);
         }
         
-        // Handle based on correct/wrong
-        if (isCorrect) {
-            console.log('   CORRECT - Playing effects, no modal');
-            
-            QuestUI.showDoubleScreenFlash('correct');
-            
-            let word = null;
-            if (window.MANYAAudioSystem) {
-                word = await window.MANYAAudioSystem.playCorrect();
-            }
-            
-            if (word) {
-                QuestUI.showWordFlash(word);
-            } else {
-                QuestUI.showWordFlash('Great');
-            }
-            
-            if (window.MANYACharacterSystem) {
-                window.MANYACharacterSystem.speak(window.MANYACharacterSystem.getCharacter().messages.correct, 2000);
-            }
-            
-            setTimeout(() => {
-                this.currentQuestionIndex++;
-                console.log(`   Advancing to question ${this.currentQuestionIndex + 1}`);
-                this.loadNextContent();
-            }, 1500);
-             if (window.LikeButtonSystem) {
-        window.LikeButtonSystem.recordCorrect();
-             }
-            
-        } else {
-            console.log('   WRONG - Growth Mindset Feedback');
-            
-            // Play single error sound
-            if (window.MANYAAudioSystem && window.MANYAAudioSystem.playWrong) {
-                window.MANYAAudioSystem.playWrong();
-            }
-            
-            // Gentle gold glow
-            this.showDoubleScreenFlash('wrong');
-            
-            // Gently highlight the correct answer
-            document.querySelectorAll('.option').forEach(opt => {
-                if (opt.dataset.letter === correctAnswer) {
-                    opt.classList.add('gentle-highlight');
-                }
-            });
-            
-            // Growth mindset message
-            this.showGrowthMindsetMessage();
-            
-            // Character encouragement
-            if (window.MANYACharacterSystem) {
-                const growthMessages = [
-                    "Mistakes help us grow! Let's see the correct answer. 🌱",
-                    "That's how we learn! Check this out. 📚",
-                    "Every step counts! Here's what we need to know. 💪",
-                    "Great effort! Let's remember this one. 🧠"
-                ];
-                const randomMsg = growthMessages[Math.floor(Math.random() * growthMessages.length)];
-                window.MANYACharacterSystem.speak(randomMsg, 2500);
-            }
-            
-            // Fetch detailed solution for modal
-            let detailedSolution = '';
-            try {
-                const solutionResponse = await fetch(`/api/solution/${question.id}`);
-                if (solutionResponse.ok) {
-                    const solutionData = await solutionResponse.json();
-                    detailedSolution = solutionData.detailedSolution || '';
-                }
-            } catch (err) {
-                console.error('Error fetching solution:', err);
-            }
-            
-            if (!detailedSolution) {
-                detailedSolution = `The correct answer is ${correctAnswer}. ${this.getOptionText(question, correctAnswer)}. Let's remember this for next time! 📚`;
-            }
-            
-            // Use the QuestUI.showLearningModal method
-            const self = this;
-            QuestUI.showLearningModal(
-                question,
-                this.selectedOption,
-                correctAnswer,
-                this.getOptionText.bind(this),
-                function() {
-                    document.querySelectorAll('.option.gentle-highlight').forEach(opt => {
-                        opt.classList.remove('gentle-highlight');
-                    });
-                    self.currentQuestionIndex++;
-                    self.loadNextContent();
-                },
-                detailedSolution
-            );
-             if (window.LikeButtonSystem) {
-        window.LikeButtonSystem.reset();
+        if (!detailedSolution) {
+            detailedSolution = `The correct answer is ${correctAnswer}. ${this.getOptionText(question, correctAnswer)}. Let's remember this for next time! 📚`;
+        }
+        
+        // Use the QuestUI.showLearningModal method
+        const self = this;
+        window.QuestUI.showLearningModal(
+            question,
+            this.selectedOption,
+            correctAnswer,
+            this.getOptionText.bind(this),
+            function() {
+                document.querySelectorAll('.option.gentle-highlight').forEach(opt => {
+                    opt.classList.remove('gentle-highlight');
+                });
+                self.currentQuestionIndex++;
+                self.loadNextContent();
+            },
+            detailedSolution
+        );
+        
+        if (window.LikeButtonSystem) {
+            window.LikeButtonSystem.reset();
+        }
     }
-        }
-    },
+},
+  // Get next mode based on metrics
+async getNextQuestionMode() {
+    if (!window.DynamicModeSelector) return 'normal';
     
+    // Update metrics with current data
+    window.DynamicModeSelector.updateMetrics(this.answers, {
+        questionsAnswered: this.answers.length,
+        sessionStartTime: this.startTime
+    });
+    
+    return window.DynamicModeSelector.getNextMode();
+},
+
+// Load question with dynamic mode
+async loadQuestionWithMode(index) {
+    const mode = await this.getNextQuestionMode();
+    console.log(`🎮 Loading question ${index + 1} with mode: ${mode}`);
+    
+    if (mode === 'speedTimer' && this.currentQuestionIndex >= 2) { // Only quest 3-5
+        this.loadSpeedTimerQuestion(this.questions[index]);
+    } else if (mode === 'reverse') {
+        this.loadReverseQuestion(this.questions[index]);
+    } else {
+        this.loadNormalQuestion(index);
+    }
+},  
     // Helper to get current streak
     async getCurrentStreak() {
         const userId = window.App?.currentUser || 'student-001';
@@ -323,23 +376,23 @@ const QuestScreen = {
     
     // ========== Study Methods ==========
     showStudySim(studySim) {
-        QuestStudy.showStudySim(studySim, this);
+        window.QuestStudy.showStudySim(studySim, this);
     },
     
     addStudyMessage() {
-        QuestStudy.addStudyMessage();
+        window.QuestStudy.addStudyMessage();
     },
     
     setupStudyContinueButton(studySim) {
-        QuestStudy.setupStudyContinueButton(studySim, this);
+        window.QuestStudy.setupStudyContinueButton(studySim, this);
     },
     
     loadSimulationQuestion(question) {
-        QuestStudy.loadSimulationQuestion(question, this);
+        window.QuestStudy.loadSimulationQuestion(question, this);
     },
     
     setupLabelingSim(question) {
-        QuestStudy.setupLabelingSim(question, this);
+        window.QuestStudy.setupLabelingSim(question, this);
     },
     
     // ========== Utility Methods ==========
@@ -348,45 +401,45 @@ const QuestScreen = {
     },
     
     detectSubject(questData, challenge) {
-        return QuestUtils.detectSubject(questData, challenge);
+        return window.QuestUtils.detectSubject(questData, challenge);
     },
     
     getOptionText(question, letter) {
-        return QuestUtils.getOptionText(question, letter);
+        return window.QuestUtils.getOptionText(question, letter);
     },
     
     loadScript(src) {
-        return QuestUtils.loadScript(src);
+        return window.QuestUtils.loadScript(src);
     },
     
     // ========== Reward Methods ==========
     async trackEmotion(emotion, intensity, context, responseTime) {
-        return QuestRewards.trackEmotion(window.App?.currentUser || 'student-001', emotion, intensity, context, responseTime);
+        return window.QuestRewards.trackEmotion(window.App?.currentUser || 'student-001', emotion, intensity, context, responseTime);
     },
     
     async trackReward(isCorrect, hintUsed, subject) {
-        return QuestRewards.trackReward(window.App?.currentUser || 'student-001', isCorrect, hintUsed, subject, (awarded) => QuestUI.showRewardAnimation(awarded));
+        return window.QuestRewards.trackReward(window.App?.currentUser || 'student-001', isCorrect, hintUsed, subject, (awarded) => window.QuestUI.showRewardAnimation(awarded));
     },
     
     async updateStreak(isCorrect) {
-        return QuestRewards.updateStreak(window.App?.currentUser || 'student-001', isCorrect, window.MANYACharacterSystem);
+        return window.QuestRewards.updateStreak(window.App?.currentUser || 'student-001', isCorrect, window.MANYACharacterSystem);
     },
     
     async updateCoins(isCorrect, hintUsed) {
-        return QuestRewards.updateCoins(window.App?.currentUser || 'student-001', isCorrect, hintUsed, (balance) => QuestRewards.updateCoinDisplay(balance));
+        return window.QuestRewards.updateCoins(window.App?.currentUser || 'student-001', isCorrect, hintUsed, (balance) => window.QuestRewards.updateCoinDisplay(balance));
     },
     
     updateCoinDisplay(balance) {
-        QuestRewards.updateCoinDisplay(balance);
+        window.QuestRewards.updateCoinDisplay(balance);
     },
     
     updateParameterDisplays() {
-        QuestRewards.updateParameterDisplays(this.params, this.answers);
+        window.QuestRewards.updateParameterDisplays(this.params, this.answers);
     },
     
     // ========== UI Methods ==========
     showDoubleScreenFlash(type) {
-        QuestUI.showDoubleScreenFlash(type);
+        window.QuestUI.showDoubleScreenFlash(type);
     },
     
     showWordFlash(word) {
@@ -394,24 +447,23 @@ const QuestScreen = {
     },
     
     showCoinAnimation(change) {
-        QuestUI.showCoinAnimation(change);
+        window.QuestUI.showCoinAnimation(change);
     },
     
     showRewardAnimation(awarded) {
-        QuestUI.showRewardAnimation(awarded);
+        window.QuestUI.showRewardAnimation(awarded);
     },
     
     showGrowthMindsetMessage() {
-        QuestUI.showGrowthMindsetMessage();
+        window.QuestUI.showGrowthMindsetMessage();
     },
     
     showChestUnlockAnimation() {
-        QuestUI.showChestUnlockAnimation();
+        window.QuestUI.showChestUnlockAnimation();
     },
     
 showCompletion(mastery) {
-    QuestUI.showCompletion(mastery, this.params.accuracy, () => {
-        const overlay = document.querySelector('.quest-complete-overlay');
+        window.QuestUI.showCompletion(mastery, this.params.accuracy, () => {
         if (overlay) overlay.style.display = 'none';
         // Reset progress bar when quest ends
         if (window.ProgressBarSystem) {
@@ -699,15 +751,15 @@ updateCompactGemDisplay(subject, count) {
     
     // ========== Lifecycle Methods ==========
     startHesitationTracking() {
-        QuestCore.startHesitationTracking(this);
+        window.QuestCore.startHesitationTracking(this);
     },
     
     async loadPsychologicalParams() {
-        await QuestCore.loadPsychologicalParams(this);
+        await window.QuestCore.loadPsychologicalParams(this);
     },
     
     handleTimeUp() {
-        QuestCore.handleTimeUp(this);
+        window.QuestCore.handleTimeUp(this);
     },
     
     exit() {
@@ -719,7 +771,7 @@ updateCompactGemDisplay(subject, count) {
     if (window.LikeButtonSystem) {
         window.LikeButtonSystem.reset();
     }
-        QuestCore.exit(this);
+        window.QuestCore.exit(this);
    
     }
 };

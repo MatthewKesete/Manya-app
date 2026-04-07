@@ -1,5 +1,5 @@
 // quest/answer.js - Answer Handling
-export const QuestAnswer = {
+const QuestAnswer = {
     selectOption(letter, context) {
         if (context.answerSubmitted) return;
         
@@ -60,3 +60,5 @@ export const QuestAnswer = {
         }
     }
 };
+
+window.QuestAnswer = QuestAnswer;

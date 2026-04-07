@@ -1,5 +1,5 @@
 // quest/study.js - Study Mode Handling
-export const QuestStudy = {
+const QuestStudy = {
     async showStudySim(studySim, context) {
         console.log('📚 Showing study simulation - this is a RECAP in the middle of questions');
         context.isStudyMode = true;
@@ -55,7 +55,7 @@ export const QuestStudy = {
         // Add study message
         this.addStudyMessage();
         
-        // Setup continue button (CRITICAL - must be called after simulation loads)
+        // Setup continue button - CRITICAL: must be called after simulation loads
         this.setupStudyContinueButton(studySim, context);
     },
 
@@ -81,7 +81,7 @@ export const QuestStudy = {
         const existingBtn = document.getElementById('simulation-done-btn');
         if (existingBtn) existingBtn.remove();
         
-        // Get or create the footer
+        // Get the footer
         let footer = document.querySelector('.gameplay-footer');
         
         // If no footer exists, create one
@@ -98,10 +98,6 @@ export const QuestStudy = {
                 document.body.appendChild(footer);
             }
         }
-        
-        // Store references to original buttons (they are hidden but exist in DOM)
-        const originalSubmitBtn = document.querySelector('.submit-btn:not(#simulation-done-btn)');
-        const originalHintBtn = document.querySelector('.hint-btn');
         
         // Clear footer and create continue button
         footer.innerHTML = '';
@@ -158,11 +154,11 @@ export const QuestStudy = {
             // Remove the continue button
             continueBtn.remove();
             
-            // RESTORE the original buttons - find them or recreate them
+            // Find or recreate the submit and hint buttons
             let submitBtn = document.querySelector('.submit-btn:not(#simulation-done-btn)');
             let hintBtn = document.querySelector('.hint-btn');
             
-            // If buttons don't exist, create them
+            // If buttons don't exist, recreate them
             if (!submitBtn) {
                 submitBtn = document.createElement('button');
                 submitBtn.className = 'submit-btn';
@@ -202,7 +198,6 @@ export const QuestStudy = {
             const optionsContainer = document.getElementById('options-container');
             if (optionsContainer) {
                 optionsContainer.style.display = 'grid';
-                // Don't clear innerHTML - it should already have options
             }
             
             // Reset counter
@@ -212,12 +207,9 @@ export const QuestStudy = {
                 counterEl.style.fontSize = '';
             }
             
-            // Reset question text (will be set by loadQuestion if needed)
+            // Reset question text
             const questionText = document.querySelector('.question-text');
-            if (questionText && !questionText.innerHTML.includes('STUDY MODE')) {
-                // Keep existing question text
-            } else if (questionText) {
-                // Clear the study mode text, will be set by loadQuestion
+            if (questionText) {
                 questionText.innerHTML = '';
             }
             
@@ -226,18 +218,15 @@ export const QuestStudy = {
             context.answerSubmitted = false;
             context.hintUsed = false;
             
-            // Important: If we're in the middle of questions, we need to reload the current question
-            // This ensures the question UI is properly displayed
+            // Reload the current question to restore options
             if (context.currentQuestionIndex < context.questions.length) {
-                // Reload the current question to restore options
                 const currentQuestion = context.questions[context.currentQuestionIndex];
                 if (currentQuestion && currentQuestion.question_type !== 'SIM') {
-                    // Re-render options
                     context.renderOptions(currentQuestion);
                 }
             }
             
-            // Continue to next content (which will load the next question)
+            // Continue to next content
             console.log('   Continuing to next content');
             context.loadNextContent();
         };
@@ -315,3 +304,5 @@ export const QuestStudy = {
         });
     }
 };
+
+window.QuestStudy = QuestStudy;

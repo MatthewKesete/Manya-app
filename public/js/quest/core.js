@@ -1,11 +1,5 @@
 // quest/core.js - Core Methods
-import { QuestUtils } from './utils.js';
-import { QuestUI } from './ui.js';
-import { QuestRewards } from './rewards.js';
-import { QuestAnswer } from './answer.js';
-import { QuestStudy } from './study.js';
-
-export const QuestCore = {
+const QuestCore = {
     init(questData, challenge, onComplete, context) {
         console.log('🎮 Initializing quest:', questData);
         
@@ -26,7 +20,7 @@ export const QuestCore = {
         context.answers = [];
         context.onComplete = onComplete;
         
-        context.currentSubject = QuestUtils.detectSubject(questData, challenge);
+        context.currentSubject = window.QuestUtils.detectSubject(questData, challenge);
         
         context.startTime = Date.now();
         context.params.frustration = 0;
@@ -209,7 +203,7 @@ loadQuestion(index, context) {
             const data = await response.json();
             context.params.confidence = data.confidence || 70;
             context.params.frustration = data.frustration || 0;
-            QuestRewards.updateParameterDisplays(context.params, context.answers);
+            window.QuestRewards.updateParameterDisplays(context.params, context.answers);
         } catch (err) {}
     },
 
@@ -222,3 +216,5 @@ loadQuestion(index, context) {
         if (context.onComplete) context.onComplete();
     }
 };
+
+window.QuestCore = QuestCore;

@@ -1,5 +1,5 @@
-// quest/utils.js - Utility methods
-export const QuestUtils = {
+// js/quest/utils.js
+window.QuestUtils = {
     extractCorrectLetter(correctAnswer) {
         if (!correctAnswer) return 'A';
         if (correctAnswer.startsWith('Option_')) return correctAnswer.replace('Option_', '');
