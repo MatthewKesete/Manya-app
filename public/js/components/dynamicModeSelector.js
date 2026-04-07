@@ -203,6 +203,11 @@ const DynamicModeSelector = {
         const bar = timerDiv.querySelector('.timer-bar');
         if (bar) bar.style.backgroundColor = '#f97316';
         
+        // Trigger blackout drama effect at 10 seconds
+        if (this.timeLeft === 10) {
+            this.triggerBlackoutDrama();
+        }
+        
         // Play ticking sound
         if (window.MANYAAudioSystem && this.timeLeft <= 5) {
             try {
@@ -222,6 +227,27 @@ const DynamicModeSelector = {
         
         const timerDiv = document.getElementById('speed-timer');
         if (timerDiv) timerDiv.style.display = 'none';
+        
+        // Clean up blackout overlay
+        const blackout = document.getElementById('speed-timer-blackout');
+        if (blackout) blackout.remove();
+    },
+    
+    triggerBlackoutDrama() {
+        // Check if blackout already exists
+        if (document.getElementById('speed-timer-blackout')) return;
+        
+        const blackout = document.createElement('div');
+        blackout.id = 'speed-timer-blackout';
+        blackout.className = 'speed-timer-blackout';
+        document.body.appendChild(blackout);
+        
+        // Auto-remove after animation if timer completes
+        setTimeout(() => {
+            if (blackout.parentNode && !this.speedTimerActive) {
+                blackout.remove();
+            }
+        }, 3000);
     },
     
     celebrateSpeedWin() {
@@ -658,6 +684,34 @@ triggerLoveReaction() {
                 justify-content: center;
                 margin-bottom: 15px;
                 color: #fbbf24;
+            }
+            
+            /* Speed Timer Blackout Drama Effect */
+            .speed-timer-blackout {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0, 0, 0, 0.7);
+                z-index: 19999;
+                pointer-events: none;
+                animation: blackoutPulse 0.6s ease-in-out infinite;
+            }
+            
+            @keyframes blackoutPulse {
+                0% {
+                    background: rgba(0, 0, 0, 0.3);
+                    box-shadow: inset 0 0 60px rgba(255, 107, 107, 0.2);
+                }
+                50% {
+                    background: rgba(0, 0, 0, 0.7);
+                    box-shadow: inset 0 0 80px rgba(255, 107, 107, 0.4);
+                }
+                100% {
+                    background: rgba(0, 0, 0, 0.3);
+                    box-shadow: inset 0 0 60px rgba(255, 107, 107, 0.2);
+                }
             }
         `;
         
