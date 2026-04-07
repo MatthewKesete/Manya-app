@@ -218,7 +218,10 @@ const QuestStudy = {
             context.answerSubmitted = false;
             context.hintUsed = false;
             
-            // Reload the current question to restore options
+            // Advance past the study simulation question
+            context.currentQuestionIndex++;
+            
+            // Reload the next question or content
             if (context.currentQuestionIndex < context.questions.length) {
                 const currentQuestion = context.questions[context.currentQuestionIndex];
                 if (currentQuestion && currentQuestion.question_type !== 'SIM') {
