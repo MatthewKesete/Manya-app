@@ -34,6 +34,53 @@ router.post('/complete', async (req, res) => {
     console.log(`✅ Completing Quest ${questId} for challenge ${challengeId} with mastery ${mastery}%`);
     
     try {
+        const columnName = `quest${questId}Mastery`;
+        const progressResult = await pool.query(
+            `SELECT * FROM user_challenge_progress WHERE "userId" = $1 AND "challengeId" = $2`,
+            [userId, challengeId]
+        );
+        const existingRow = progressResult.rows[0];
+        const existingMastery = existingRow ? (existingRow[columnName] || 0) : 0;
+
+        if (existingRow && existingMastery >= mastery) {
+            console.log(`⏹ Quest ${questId} mastery ${mastery}% not recorded because existing mastery ${existingMastery}% is higher or equal.`);
+            const nextUnlocked = false;
+
+            if (answers && answers.length > 0) {
+                for (const answer of answers) {
+                    await pool.query(
+                        `INSERT INTO user_answer (
+                            id, "userId", "questionId", "isCorrect", "selectedAnswer", 
+                            "correctAnswer", "timeSpentMs", "hintUsed", "answerChanged", 
+                            "pointsEarned", "answeredAt"
+                        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+                        [
+                            'ans-' + Date.now() + '-' + Math.random().toString(36).substr(2, 6),
+                            userId,
+                            answer.questionId,
+                            answer.isCorrect,
+                            answer.selectedAnswer,
+                            answer.correctAnswer,
+                            answer.timeSpentMs || 0,
+                            answer.hintUsed || false,
+                            answer.answerChanged || false,
+                            answer.pointsEarned || 0,
+                            new Date().toISOString()
+                        ]
+                    );
+                }
+            }
+
+            return res.json({
+                success: true,
+                mastery: existingMastery,
+                updated: false,
+                nextUnlocked,
+                nextQuestId: null,
+                message: 'Existing score is higher; progress unchanged.'
+            });
+        }
+
         // Update user progress
         await pool.query(
             `INSERT INTO user_challenge_progress 
