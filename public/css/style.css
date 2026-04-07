@@ -2013,6 +2013,12 @@ model-viewer {
     gap: 15px;
     margin-bottom: 15px;
     flex-wrap: wrap;
+    position: sticky;
+    top: 0;
+    background: white;
+    padding: 12px 0;
+    border-bottom: 1px solid #e2e8f0;
+    z-index: 50;
 }
 
 .stats-row .gem-display-container {
@@ -2023,6 +2029,23 @@ model-viewer {
 .stats-row .progress-bar-container {
     flex: 3;
     margin-bottom: 0;
+}
+
+/* Mobile stack layout - progress bar below gems */
+@media (max-width: 768px) {
+    .stats-row {
+        flex-direction: column-reverse;
+        gap: 10px;
+        padding: 10px 0;
+    }
+    
+    .stats-row .gem-display-container {
+        flex: 1;
+    }
+    
+    .stats-row .progress-bar-container {
+        flex: 1;
+    }
 }
 
 /* Hide psychological params if needed - optional */
