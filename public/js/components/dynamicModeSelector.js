@@ -315,22 +315,23 @@ triggerLoveReaction() {
     if (this.loveReactionActive) return;
     this.loveReactionActive = true;
     
-    console.log('💕 LOVE REACTION! Creating floating hearts...');
+    console.log('✨ STREAK REACTION! Creating floating streak effects...');
     
-    // Create floating hearts across the screen
+    // Create floating streak effects across the screen
     for (let i = 0; i < 40; i++) {
         setTimeout(() => {
             const heart = document.createElement('div');
             heart.className = 'love-heart';
-            heart.innerHTML = ['❤️', '💖', '💗', '💓', '💕', '💝', '💘'][Math.floor(Math.random() * 7)];
+            heart.innerHTML = ['✨', '⚡', '⭐', '💥', '🔥', '🎯', '🌟'][Math.floor(Math.random() * 7)];
             heart.style.cssText = `
                 position: fixed;
                 left: ${Math.random() * window.innerWidth}px;
                 bottom: -50px;
-                font-size: ${20 + Math.random() * 40}px;
+                font-size: ${22 + Math.random() * 40}px;
                 pointer-events: none;
                 z-index: 20000;
                 animation: loveFloat ${1 + Math.random() * 1.5}s ease-out forwards;
+                text-shadow: 0 0 18px rgba(255,255,255,0.6), 0 0 8px rgba(255,255,255,0.25);
             `;
             document.body.appendChild(heart);
             
@@ -354,8 +355,8 @@ triggerLoveReaction() {
     loveMsg.className = 'love-streak-message';
     loveMsg.innerHTML = `
         <div class="love-streak-content">
-            <span>💕 4 IN A ROW! 💕</span>
-            <span>LOVE STREAK!</span>
+            <span>4 IN A ROW</span>
+            <span>STREAK POWER</span>
         </div>
     `;
     document.body.appendChild(loveMsg);
@@ -519,34 +520,60 @@ triggerLoveReaction() {
                 pointer-events: none;
                 z-index: 20001;
                 animation: loveFloat 1.5s ease-out forwards;
+                color: #f8e71c;
+                text-shadow: 0 0 20px rgba(248,231,28,0.8), 0 0 40px rgba(248,231,28,0.35);
             }
             
             @keyframes loveFloat {
                 0% {
+                    opacity: 0;
+                    transform: translateY(0) scale(0.7) rotate(0deg);
+                }
+                35% {
                     opacity: 1;
-                    transform: translateY(0) scale(0.5);
+                }
+                65% {
+                    transform: translateY(-140px) scale(1.2) rotate(10deg);
                 }
                 100% {
                     opacity: 0;
-                    transform: translateY(-200px) scale(1.5);
+                    transform: translateY(-260px) scale(0.9) rotate(-12deg);
                 }
             }
             
             .love-streak-message {
                 position: fixed;
-                top: 30%;
+                top: 22%;
                 left: 50%;
                 transform: translateX(-50%);
-                background: linear-gradient(135deg, #ff6b6b, #ff4d4d);
-                padding: 15px 30px;
-                border-radius: 60px;
+                background: linear-gradient(135deg, #0f172a, #1e293b);
+                border: 1px solid rgba(255,255,255,0.12);
+                padding: 18px 34px;
+                border-radius: 28px;
                 z-index: 20002;
-                animation: loveStreakPop 0.5s cubic-bezier(0.34, 1.2, 0.64, 1);
-                color: white;
-                font-weight: bold;
+                animation: loveStreakPop 0.45s cubic-bezier(0.34, 1.2, 0.64, 1);
+                color: #f8fafc;
+                font-weight: 800;
                 font-size: 18px;
+                letter-spacing: 0.04em;
                 text-align: center;
-                box-shadow: 0 0 30px rgba(255,107,107,0.5);
+                box-shadow: 0 22px 80px rgba(15, 23, 42, 0.45);
+                backdrop-filter: blur(12px);
+            }
+            
+            .love-streak-message span:first-child {
+                display: block;
+                font-size: 0.95rem;
+                color: #94a3b8;
+                margin-bottom: 6px;
+                text-transform: uppercase;
+                letter-spacing: 0.12em;
+            }
+            
+            .love-streak-message span:last-child {
+                display: block;
+                font-size: 1.4rem;
+                letter-spacing: 0.1em;
             }
             
             @keyframes loveStreakPop {
@@ -555,7 +582,7 @@ triggerLoveReaction() {
                     transform: translateX(-50%) scale(0.3);
                 }
                 50% {
-                    transform: translateX(-50%) scale(1.1);
+                    transform: translateX(-50%) scale(1.05);
                 }
                 100% {
                     opacity: 1;
