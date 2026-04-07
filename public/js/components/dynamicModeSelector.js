@@ -16,6 +16,9 @@ const DynamicModeSelector = {
         recap: 0.1
     },
     
+    // Force mode for testing
+    forcedMode: null,
+    
     // Speed timer state
     speedTimerActive: false,
     speedTimerInterval: null,
@@ -113,7 +116,21 @@ const DynamicModeSelector = {
     },
     
     // Get next mode based on current mix
+    setForcedMode(mode) {
+        const validModes = ['normal', 'speedTimer', 'reverse', 'random', null];
+        if (!validModes.includes(mode)) {
+            console.warn('Invalid forced mode', mode);
+            this.forcedMode = null;
+            return;
+        }
+        this.forcedMode = mode === 'random' ? null : mode;
+        console.log('🎛️ DynamicModeSelector forced mode:', this.forcedMode || 'dynamic');
+    },
+
     getNextMode() {
+        if (this.forcedMode) {
+            return this.forcedMode;
+        }
         const random = Math.random();
         let cumulative = 0;
         
@@ -447,19 +464,20 @@ triggerLoveReaction() {
             /* Speed Timer Styles */
             .speed-timer {
                 background: linear-gradient(135deg, #1a1a2e, #16213e);
-                border-radius: 12px;
-                padding: 8px 16px;
+                border-radius: 10px;
+                padding: 6px 12px;
                 text-align: center;
                 color: white;
-                min-width: 180px;
+                min-width: 150px;
                 animation: timerPulse 1s infinite;
+                font-size: 0.92em;
             }
             
             .timer-label {
-                font-size: 10px;
-                letter-spacing: 2px;
+                font-size: 9px;
+                letter-spacing: 1.5px;
                 color: #fbbf24;
-                margin-bottom: 5px;
+                margin-bottom: 4px;
             }
             
             .timer-bar-container {
