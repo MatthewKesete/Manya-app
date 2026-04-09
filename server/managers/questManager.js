@@ -335,14 +335,60 @@ class QuestManager {
                     [userId, questId, mastery, new Date()]
                 );
                 
+                // --- Gamification Logic Start ---
+                const GamificationManager = require('./GamificationManager');
+                const stars = GamificationManager.calculateStars(mastery);
+                
+                // Award Quest XP (Base)
                 await pool.query(
                     `INSERT INTO quest_rewards (
                         "userId", "questId", "rewardType", "rewardValue", "badgeEarned"
                     ) VALUES ($1, $2, $3, $4, $5)`,
                     [userId, questId, 'xp', quest.xpReward, quest.badgeIcon]
                 );
+
+                // Award Coins based on Stars (as defined in reward_config table usually)
+                let coinReward = 0;
+                if (stars === 3) coinReward = 80;
+                else if (stars === 2) coinReward = 50;
+                else if (stars === 1) coinReward = 30;
                 
-                return { completed: true, mastery, xpEarned: quest.xpReward, badge: quest.badgeIcon };
+                if (coinReward > 0) {
+                    await GamificationManager.awardCoins(userId, coinReward, `Quest ${questId} Completion (${stars} stars)`);
+                }
+
+                // Award Gem for 3-star mastery (90%+)
+                let gemsEarned = 0;
+                if (stars === 3) {
+                    gemsEarned = 1;
+                    await GamificationManager.awardGems(userId, 1, `Quest ${questId} 3-star Mastery`);
+                }
+
+                // Update total stars
+                await pool.query(
+                    `UPDATE user_stats SET "totalStars" = "totalStars" + $1 WHERE "userId" = $2`,
+                    [stars, userId]
+                );
+
+                // Award a Bronze Chest for any completion
+                const chestReward = await GamificationManager.awardChest(userId, stars === 3 ? 'silver' : 'bronze');
+
+                // Check achievements
+                const newAchievements = await GamificationManager.checkAchievements(userId);
+                
+                // --- Gamification Logic End ---
+                
+                return { 
+                    completed: true, 
+                    mastery, 
+                    stars,
+                    xpEarned: quest.xpReward, 
+                    coinsEarned: coinReward,
+                    gemsEarned: gemsEarned,
+                    badge: quest.badgeIcon,
+                    chest: chestReward ? chestReward.chest_type : null,
+                    achievements: newAchievements
+                };
             }
             
             return { completed: false, progress: questProgress?.progress };

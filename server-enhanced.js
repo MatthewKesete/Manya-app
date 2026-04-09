@@ -32,8 +32,9 @@ pool.connect((err, client, release) => {
 
 // ==================== CONSTANTS & MANAGERS ====================
 const REVIEW_INTERVALS = [1, 7, 30, 90];
-const QuestManager = require('./quest-manager');
+const QuestManager = require('./server/managers/questManager');
 const questManager = new QuestManager();
+const GamificationManager = require('./server/managers/GamificationManager');
 
 // ==================== PLE RATIO MANAGER ====================
 class PLERatioManager {
@@ -623,16 +624,34 @@ app.post('/api/submit-answer', async (req, res) => {
         
         // Update quest progress
         try {
+            // Award coins for correct answer
+            if (wasCorrect) {
+                const coinAmount = (hintUsed ? 5 : 10); // Standard 10, 5 with hint
+                await GamificationManager.awardCoins(userId, coinAmount, `Correct Answer: ${questionId}`);
+            }
+
             // Get current quest
             const currentQuest = await questManager.getCurrentQuest(userId, pool);
             if (currentQuest && currentQuest.questId) {
-                await questManager.updateQuestProgress(
+                const questResult = await questManager.updateQuestProgress(
                     userId, 
                     currentQuest.questId, 
                     wasCorrect, 
                     pointsEarned, 
                     pool
                 );
+
+                // If quest completed, it will return rewards/achievements
+                if (questResult.completed) {
+                    return res.json({
+                        success: true,
+                        isCorrect: wasCorrect,
+                        correctAnswer: correctAnswer,
+                        pointsEarned: pointsEarned,
+                        questCompleted: true,
+                        questRewards: questResult
+                    });
+                }
             }
         } catch (err) {
             console.error('Error updating quest progress:', err);
@@ -906,6 +925,93 @@ app.delete('/api/user/:userId', async (req, res) => {
         });
     } catch (err) {
         console.error('Error deleting user:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// ==================== GAMIFICATION ENDPOINTS ====================
+
+// Get user gamification summary
+app.get('/api/gamification/summary/:userId', async (req, res) => {
+    try {
+        const stats = await pool.query(
+            'SELECT coins, gems, "totalStars", "currentStreak" FROM user_stats WHERE "userId" = $1',
+            [req.params.userId]
+        );
+        const achievements = await pool.query(
+            'SELECT COUNT(*) FROM user_achievements WHERE user_id = $1',
+            [req.params.userId]
+        );
+        const chests = await pool.query(
+            'SELECT COUNT(*) FROM user_chests WHERE user_id = $1 AND opened = false',
+            [req.params.userId]
+        );
+        
+        res.json({
+            stats: stats.rows[0] || { coins: 0, gems: 0, totalStars: 0, currentStreak: 0 },
+            achievementsCount: parseInt(achievements.rows[0].count),
+            pendingChests: parseInt(chests.rows[0].count)
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Get user achievements (badges)
+app.get('/api/gamification/achievements/:userId', async (req, res) => {
+    try {
+        const result = await pool.query(`
+            SELECT a.*, ua.earned_at 
+            FROM achievements a
+            JOIN user_achievements ua ON a.id = ua.achievement_id
+            WHERE ua.user_id = $1
+            ORDER BY ua.earned_at DESC
+        `, [req.params.userId]);
+        res.json(result.rows);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Get user chests
+app.get('/api/gamification/chests/:userId', async (req, res) => {
+    try {
+        const result = await pool.query(
+            'SELECT * FROM user_chests WHERE user_id = $1 AND opened = false ORDER BY created_at DESC',
+            [req.params.userId]
+        );
+        res.json(result.rows);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Open a chest
+app.post('/api/gamification/chest/open', async (req, res) => {
+    const { userId, chestId } = req.body;
+    try {
+        const rewards = await GamificationManager.openChest(userId, chestId);
+        if (!rewards) return res.status(400).json({ error: 'Could not open chest' });
+        
+        // Also check if opening the chest triggered any achievements
+        const achievements = await GamificationManager.checkAchievements(userId);
+        
+        res.json({ success: true, rewards, achievements });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Get unlocked content (Treasure Box library)
+app.get('/api/gamification/library/:userId', async (req, res) => {
+    try {
+        const result = await pool.query(`
+            SELECT * FROM unlocked_content 
+            WHERE user_id = $1 
+            ORDER BY unlocked_at DESC
+        `, [req.params.userId]);
+        res.json(result.rows);
+    } catch (err) {
         res.status(500).json({ error: err.message });
     }
 });

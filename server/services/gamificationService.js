@@ -391,6 +391,37 @@ async updateUserStreak(userId, isCorrect) {
         client.release();
     }
 }
+
+    // Get comprehensive summary for UI
+    async getSummary(userId) {
+        try {
+            const streak = await this.getStreak(userId);
+            const overallGems = await this.getOverallGems(userId);
+            
+            // Get coins from user_coins table
+            const coinResult = await pool.query(
+                `SELECT coin_balance FROM user_coins WHERE user_id = $1`, [userId]
+            );
+            const coins = coinResult.rows[0]?.coin_balance || 0;
+            
+            // Get total stars from user_stats
+            const statsResult = await pool.query(
+                `SELECT "totalStars" FROM user_stats WHERE "userId" = $1`, [userId]
+            );
+            const totalStars = statsResult.rows[0]?.totalStars || 0;
+            
+            return {
+                coins,
+                gems: overallGems,
+                totalStars,
+                currentStreak: streak.current_streak || 0,
+                longestStreak: streak.longest_streak || 0
+            };
+        } catch (err) {
+            console.error('Error getting gamification summary:', err);
+            return { coins: 0, gems: 0, totalStars: 0, currentStreak: 0 };
+        }
+    }
 }
 
 module.exports = new GamificationService();

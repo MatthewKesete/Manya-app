@@ -21,6 +21,7 @@ router.post('/update', async (req, res) => {
     const { userId, isCorrect, hintUsed } = req.body;
     
     try {
+        await coinService.initializeUser(userId);
         const result = await coinService.updateCoins(userId, isCorrect, hintUsed);
         res.json(result);
     } catch (err) {
@@ -46,27 +47,8 @@ router.post('/bonus', async (req, res) => {
     const { userId, amount, reason } = req.body;
     
     try {
-        await coinService.initializeUser(userId);
-        
-        const result = await pool.query(
-            `UPDATE user_coins 
-             SET coin_balance = coin_balance + $2, 
-                 updated_at = CURRENT_TIMESTAMP
-             WHERE user_id = $1
-             RETURNING coin_balance`,
-            [userId, amount]
-        );
-        
-        const newBalance = result.rows[0]?.coin_balance || 0;
-        
-        console.log(`💰 Bonus ${amount} coins awarded to ${userId} for ${reason}`);
-        
-        res.json({
-            success: true,
-            amount: amount,
-            newBalance: newBalance,
-            reason: reason
-        });
+        const result = await coinService.awardBonusCoins(userId, amount, reason);
+        res.json(result);
     } catch (err) {
         console.error('Error awarding bonus coins:', err);
         res.status(500).json({ error: err.message });

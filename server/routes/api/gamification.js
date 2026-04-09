@@ -136,16 +136,50 @@ router.post('/streak/update', async (req, res) => {
     }
 });
 
-// Get streak info
-router.get('/streak/:userId', async (req, res) => {
+// Get user gamification summary
+router.get('/summary/:userId', async (req, res) => {
     const { userId } = req.params;
-    
     try {
-        const streak = await gamificationService.getStreak(userId);
-        res.json(streak);
+        const stats = await gamificationService.getSummary(userId);
+        res.json({ stats });
     } catch (err) {
-        console.error('Error getting streak:', err);
+        console.error('Error getting summary:', err);
         res.status(500).json({ error: err.message });
     }
 });
+
+// Get user achievements (badges)
+router.get('/achievements/:userId', async (req, res) => {
+    const { userId } = req.params;
+    try {
+        const result = await pool.query(`
+            SELECT a.*, ua.earned_at 
+            FROM achievements a
+            JOIN user_achievements ua ON a.id = ua.achievement_id
+            WHERE ua.user_id = $1
+            ORDER BY ua.earned_at DESC
+        `, [userId]);
+        res.json(result.rows);
+    } catch (err) {
+        console.error('Error getting achievements:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Get user's unlocked content (Treasure Box)
+router.get('/library/:userId', async (req, res) => {
+    const { userId } = req.params;
+    try {
+        const result = await pool.query(`
+            SELECT * FROM unlocked_content 
+            WHERE user_id = $1 
+            ORDER BY unlocked_at DESC
+        `, [userId]);
+        res.json(result.rows);
+    } catch (err) {
+        console.error('Error getting library:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
 module.exports = router;

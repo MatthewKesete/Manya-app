@@ -206,6 +206,30 @@ class CoinService {
         } finally {
             client.release();
         }
+}
+
+    // Award bonus coins (e.g., from character interactions or streaks)
+    async awardBonusCoins(userId, amount, reason) {
+        await this.initializeUser(userId);
+        
+        const result = await pool.query(
+            `UPDATE user_coins 
+             SET coin_balance = coin_balance + $2, 
+                 updated_at = CURRENT_TIMESTAMP
+             WHERE user_id = $1
+             RETURNING coin_balance`,
+            [userId, amount]
+        );
+        
+        const newBalance = result.rows[0]?.coin_balance || 0;
+        console.log(`💰 Bonus ${amount} coins awarded to ${userId} for ${reason}`);
+        
+        return {
+            success: true,
+            amount,
+            newBalance,
+            reason
+        };
     }
 }
 

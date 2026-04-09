@@ -2107,4 +2107,33 @@ model-viewer {
         opacity: 1;
         transform: translateX(-50%) scale(1);
     }
-}
+}. s t a t s - r o w   {   d i s p l a y :   f l e x ;   f l e x - d i r e c t i o n :   c o l u m n ;   g a p :   8 p x ;   a l i g n - i t e m s :   c e n t e r ;   p a d d i n g :   1 0 p x   2 0 p x ;   b a c k g r o u n d :   # f 8 f a f c ;   b o r d e r - b o t t o m :   1 p x   s o l i d   # e 2 e 8 f 0 ;   z - i n d e x :   1 0 0 ;   f l e x - s h r i n k :   0 ;   }  
+ . c o m p a c t - g e m s   {   d i s p l a y :   f l e x ;   g a p :   1 0 p x ;   f l e x - w r a p :   w r a p ;   j u s t i f y - c o n t e n t :   c e n t e r ;   a l i g n - i t e m s :   c e n t e r ;   }   . c o m p a c t - g e m   {   d i s p l a y :   f l e x ;   a l i g n - i t e m s :   c e n t e r ;   g a p :   5 p x ;   f o n t - w e i g h t :   b o l d ;   b a c k g r o u n d :   w h i t e ;   p a d d i n g :   4 p x   1 2 p x ;   b o r d e r - r a d i u s :   2 0 p x ;   b o x - s h a d o w :   0   2 p x   5 p x   r g b a ( 0 , 0 , 0 , 0 . 0 5 ) ;   }   . c o m p a c t - g e m - i c o n   {   w i d t h :   2 4 p x ;   h e i g h t :   2 4 p x ;   }  
+ 
+/* Achievement Badges */
+.achievements-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; padding: 20px; }
+.achievement-badge-card { background: white; border-radius: 20px; padding: 20px; display: flex; align-items: center; gap: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); transition: transform 0.3s; border: 1px solid #e2e8f0; }
+.achievement-badge-card.earned { border-left: 5px solid #10b981; }
+.achievement-badge-card:hover { transform: translateY(-5px); }
+.badge-icon { font-size: 3rem; background: #f1f5f9; width: 80px; height: 80px; display: flex; align-items: center; justify-content: center; border-radius: 50%; }
+.badge-info { flex: 1; }
+.badge-name { font-size: 1.2rem; font-weight: bold; color: #1e293b; margin: 0 0 5px 0; }
+.badge-desc { font-size: 0.9rem; color: #64748b; margin: 0 0 10px 0; }
+.badge-date { font-size: 0.75rem; color: #94a3b8; background: #f8fafc; padding: 4px 10px; border-radius: 12px; }
+/* Treasure Box Library */
+.treasure-box-container { padding: 20px; }
+.library-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 20px; margin-top: 20px; }
+.library-item-card { background: white; border-radius: 18px; padding: 20px; text-align: center; box-shadow: 0 4px 12px rgba(0,0,0,0.05); border: 1px solid #e2e8f0; transition: all 0.3s; position: relative; overflow: hidden; }
+.library-item-card:hover { transform: scale(1.05); box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+.item-icon { font-size: 3.5rem; margin-bottom: 15px; }
+.item-name { font-size: 1rem; font-weight: 700; color: #1e293b; margin: 0 0 10px 0; }
+.item-date { font-size: 0.75rem; color: #94a3b8; display: block; margin-bottom: 15px; }
+.play-btn { background: #3b82f6; color: white; border: none; padding: 8px 20px; border-radius: 30px; font-weight: 600; cursor: pointer; transition: background 0.2s; }
+.play-btn:hover { background: #2563eb; }
+/* Star Styles */
+.star-display { display: flex; justify-content: center; gap: 10px; margin-bottom: 15px; }
+.quest-result-star { text-shadow: 0 0 15px rgba(251, 191, 36, 0.4); }
+.quest-result-star.earned { color: #fbbf24; }
+.quest-result-star.empty { color: #e2e8f0; }
+@keyframes slideInRight { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+@keyframes fadeOutRight { from { transform: translateX(0); opacity: 1; } to { transform: translateX(100%); opacity: 0; } }

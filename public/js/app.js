@@ -53,45 +53,42 @@ async init() {
    // In app.js - update loadUserData method
 async loadUserData() {
     try {
-        // Change this line from '/api/user-stats/student-001' to '/api/stats/user-stats/student-001'
-        const response = await fetch(`/api/stats/user-stats/${this.currentUser}`);
-        
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
+        const response = await fetch(`/api/gamification/summary/${this.currentUser}`);
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
         
         const data = await response.json();
-        console.log('📊 User stats loaded:', data);
+        console.log('📊 Gamification summary loaded:', data);
         
-        // Update UI with the stats from the summary object
-        document.getElementById('streakCount').textContent = data.summary?.currentStreak || 0;
-        document.getElementById('pointsTotal').textContent = data.summary?.totalPoints || 0;
+        // Update basic stats
+        if (document.getElementById('streakCount')) {
+            document.getElementById('streakCount').textContent = data.stats.currentStreak || 0;
+        }
         
-        // Also update psychological params if available
-        if (window.QuestScreen) {
-            window.QuestScreen.params.accuracy = data.summary?.overallAccuracy || 0;
+        // Update coins and stars
+        if (document.getElementById('coin-balance')) {
+            document.getElementById('coin-balance').textContent = data.stats.coins || 0;
+        }
+        if (document.getElementById('pointsTotal')) {
+            document.getElementById('pointsTotal').textContent = data.stats.totalStars || 0;
+        }
+        
+        // Update rare gems in compact row if quest is active
+        const rareGemEl = document.getElementById('compact-rare-gems');
+        if (rareGemEl) {
+            rareGemEl.textContent = data.stats.gems || 0;
+        }
+        
+        // Update psychological params if QuestScreen is active
+        if (window.QuestScreen && window.QuestScreen.updateParameterDisplays) {
+            // We might want to keep fetching detailed stats for psych params
+            const statsResp = await fetch(`/api/stats/user-stats/${this.currentUser}`);
+            const statsData = await statsResp.json();
+            window.QuestScreen.params.accuracy = statsData.summary?.overallAccuracy || 0;
             window.QuestScreen.updateParameterDisplays();
         }
-        try {
-        const response = await fetch(`/api/stats/user-stats/${this.currentUser}`);
-        const stats = await response.json();
-        
-        document.getElementById('streakCount').textContent = stats.summary?.currentStreak || 0;
-        document.getElementById('pointsTotal').textContent = stats.summary?.totalPoints || 0;
-        
-        // Load coin balance
-        const coinResponse = await fetch(`/api/coins/balance/${this.currentUser}`);
-        const coinData = await coinResponse.json();
-        document.getElementById('coin-balance').textContent = coinData.balance || 0;
         
     } catch (err) {
         console.error('Error loading user data:', err);
-    }
-    } catch (err) {
-        console.error('Error loading user data:', err);
-        // Set default values on error
-        document.getElementById('streakCount').textContent = '0';
-        document.getElementById('pointsTotal').textContent = '0';
     }
 },
     
@@ -139,6 +136,10 @@ async loadUserData() {
                     
                 case 'achievements':
                     this.loadAchievements();
+                    break;
+                    
+                case 'treasure-box':
+                    this.loadTreasureBox();
                     break;
             }
         } catch (err) {
@@ -196,34 +197,103 @@ async loadUserData() {
     
     async loadAchievements() {
         const contentArea = document.getElementById('content-area');
-        contentArea.innerHTML = '<div class="loading">Loading achievements...</div>';
+        const template = document.getElementById('achievements-view');
+        contentArea.innerHTML = template.innerHTML;
+        
+        const grid = document.getElementById('achievements-grid');
+        grid.innerHTML = '<div class="loading">Loading badges...</div>';
         
         try {
-            const response = await fetch(`/api/quests/rewards/${this.currentUser}`);
+            const response = await fetch(`/api/gamification/achievements/${this.currentUser}`);
             const achievements = await response.json();
             
             if (achievements.length === 0) {
-                contentArea.innerHTML = '<div class="empty-state">No achievements yet. Complete quests to earn badges!</div>';
+                grid.innerHTML = '<div class="empty-state">No badges yet. Complete challenges and milestones to earn them!</div>';
                 return;
             }
             
-            let html = '<div class="achievements-grid">';
-            achievements.forEach(ach => {
-                html += `
-                    <div class="achievement-card">
-                        <div class="achievement-icon">${ach.badgeEarned || '🏆'}</div>
-                        <div class="achievement-name">Quest ${ach.questId}</div>
-                        <div class="achievement-date">${new Date(ach.claimedAt).toLocaleDateString()}</div>
+            grid.innerHTML = achievements.map(ach => `
+                <div class="achievement-badge-card earned">
+                    <div class="badge-icon">${ach.icon || '🏆'}</div>
+                    <div class="badge-info">
+                        <h4 class="badge-name">${ach.name}</h4>
+                        <p class="badge-desc">${ach.description}</p>
+                        <span class="badge-date">Earned ${new Date(ach.earned_at).toLocaleDateString()}</span>
                     </div>
-                `;
-            });
-            html += '</div>';
-            
-            contentArea.innerHTML = html;
+                </div>
+            `).join('');
             
         } catch (err) {
             console.error('Error loading achievements:', err);
-            contentArea.innerHTML = '<div class="error">Failed to load achievements</div>';
+            grid.innerHTML = '<div class="error">Failed to load badges</div>';
+        }
+    },
+
+    async loadTreasureBox() {
+        const contentArea = document.getElementById('content-area');
+        const template = document.getElementById('treasure-box-view');
+        contentArea.innerHTML = template.innerHTML;
+        
+        const grid = document.getElementById('library-grid');
+        grid.innerHTML = '<div class="loading">Opening your treasure box...</div>';
+        
+        try {
+            const response = await fetch(`/api/gamification/library/${this.currentUser}`);
+            const content = await response.json();
+            
+            if (content.length === 0) {
+                grid.innerHTML = '<div class="empty-state">Your treasure box is empty. Open chests to find recaps, simulations, and more!</div>';
+                return;
+            }
+            
+            grid.innerHTML = content.map(item => `
+                <div class="library-item-card" data-content-id="${item.content_id}">
+                    <div class="item-icon">${item.content_id.includes('recap') ? '📖' : '🎮'}</div>
+                    <div class="item-info">
+                        <h4 class="item-name">${item.content_id.replace(/_/g, ' ').toUpperCase()}</h4>
+                        <span class="item-date">Unlocked ${new Date(item.unlocked_at).toLocaleDateString()}</span>
+                    </div>
+                    <button class="play-btn" onclick="App.playTreasure('${item.content_id}')">Play</button>
+                </div>
+            `).join('');
+            
+        } catch (err) {
+            console.error('Error loading treasure box:', err);
+            grid.innerHTML = '<div class="error">Failed to open treasure box</div>';
+        }
+    },
+
+    async playTreasure(contentId) {
+        console.log('Playing treasure item:', contentId);
+        // Logic to launch a mini-quest or recap screen
+        if (contentId.includes('recap')) {
+            alert(`Opening Recap: ${contentId}. (Implementation: Launching Recap Viewer)`);
+        } else {
+            alert(`Launching Simulation: ${contentId}.`);
+        }
+    },
+
+    async openChest(chestId) {
+        try {
+            const response = await fetch('/api/gamification/chest/open', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId: this.currentUser, chestId })
+            });
+            const result = await response.json();
+            
+            if (result.success) {
+                // Show reward animation
+                if (window.QuestUI) {
+                    result.rewards.forEach(r => {
+                        if (r.type === 'coins') window.QuestUI.showCoinAnimation(r.amount);
+                        else if (r.type === 'gems') alert(`💎 Found ${r.amount} Gems!`);
+                    });
+                }
+                this.loadUserData(); // Refresh stats
+            }
+        } catch (err) {
+            console.error('Error opening chest:', err);
         }
     }
 };

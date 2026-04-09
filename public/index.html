@@ -59,6 +59,7 @@
             <button class="nav-btn active" data-view="topics">📚 Topics</button>
             <button class="nav-btn" data-view="profile">👤 Profile</button>
             <button class="nav-btn" data-view="achievements">🏆 Achievements</button>
+            <button class="nav-btn" data-view="treasure-box">📦 Treasure Box</button>
         </nav>
 
         <div class="dashboard-section">
@@ -89,6 +90,8 @@
 
     <!-- Templates -->
     <template id="topics-view"><div class="topics-container"><h2>Your Learning Path</h2><div class="topics-grid" id="topics-grid"></div></div></template>
+    <template id="achievements-view"><div class="achievements-container"><h2>Your Badges</h2><div class="achievements-grid" id="achievements-grid"></div></div></template>
+    <template id="treasure-box-view"><div class="treasure-box-container"><h2>Your Unlocked Content</h2><div class="library-grid" id="library-grid"></div></div></template>
     <template id="challenge-card"><div class="challenge-card" data-challenge-id=""><div class="challenge-icon"></div><div class="challenge-info"><h3 class="challenge-name"></h3><div class="quest-progress"><div class="quest-dots"></div><span class="progress-text"></span></div></div></div></template>
     <template id="quest-detail-view"><div class="quest-detail-container"><button class="back-btn">← Back to Challenges</button><div class="challenge-header"><div class="challenge-icon-large"></div><div class="challenge-title"><h2 id="challenge-name"></h2><p id="challenge-description"></p></div></div><div class="quests-grid" id="quests-grid"></div></div></template>
     <template id="quest-card"><div class="quest-card" data-quest-id=""><div class="quest-status-icon"></div><div class="quest-info"><h4 class="quest-name"></h4><div class="quest-meta"><span class="quest-length"></span><span class="quest-mastery"></span></div><div class="progress-bar-container" style="display: none;"><div class="progress-bar-fill"></div></div></div><div class="quest-action"></div></div></template>

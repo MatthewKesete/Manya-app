@@ -159,6 +159,14 @@ router.post('/complete', async (req, res) => {
 
         const achievementsUnlocked = await achievementService.checkAndAwardAchievements(userId);
         
+        // Update total cumulative stars
+        if (stars > 0) {
+            await pool.query(
+                `UPDATE user_stats SET "totalStars" = "totalStars" + $2 WHERE "userId" = $1`,
+                [userId, stars]
+            );
+        }
+        
         res.json({
             success: true,
             mastery,

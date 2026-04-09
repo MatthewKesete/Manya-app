@@ -211,12 +211,14 @@ async submitAnswer() {
     }
     
     // Update accuracy
-    const correctSoFar = this.answers.filter(a => a.isCorrect).length;
-    this.params.accuracy = (correctSoFar / this.answers.length) * 100;
+    const correctSoFar = this.answers.filter(a => a.isCorrect === true).length;
+    const gradableAnswers = this.answers.filter(a => a.mode !== 'study').length;
+    this.params.accuracy = gradableAnswers > 0 ? (correctSoFar / gradableAnswers) * 100 : 0;
     QuestRewards.updateParameterDisplays(this.params, this.answers);
     
     // Update progress bar
-    const totalCount = this.answers.length;
+    const gradeableQuestions = this.questions.filter(q => !(q.question_type === 'SIM' && q.mode_sim === 'study'));
+    const totalCount = gradeableQuestions.length > 0 ? gradeableQuestions.length : 1;
     const streak = await this.getCurrentStreak();
     if (window.ProgressBarSystem) {
         window.ProgressBarSystem.updateProgress(correctSoFar, totalCount, streak);
@@ -426,13 +428,16 @@ async handleSpeedTimerTimeout() {
         hesitationCount: this.hesitationCount
     });
 
-    const correctSoFar = this.answers.filter(a => a.isCorrect).length;
-    this.params.accuracy = (correctSoFar / this.answers.length) * 100;
+    const correctSoFar = this.answers.filter(a => a.isCorrect === true).length;
+    const gradableAnswers = this.answers.filter(a => a.mode !== 'study').length;
+    this.params.accuracy = gradableAnswers > 0 ? (correctSoFar / gradableAnswers) * 100 : 0;
     QuestRewards.updateParameterDisplays(this.params, this.answers);
 
     const streak = await this.getCurrentStreak();
     if (window.ProgressBarSystem) {
-        window.ProgressBarSystem.updateProgress(correctSoFar, this.answers.length, streak);
+        const gradeableQuestions = this.questions.filter(q => !(q.question_type === 'SIM' && q.mode_sim === 'study'));
+        const totalCount = gradeableQuestions.length > 0 ? gradeableQuestions.length : 1;
+        window.ProgressBarSystem.updateProgress(correctSoFar, totalCount, streak);
     }
 
     if (window.MANYAAudioSystem && window.MANYAAudioSystem.playWrong) {
@@ -631,8 +636,9 @@ showCompletion(mastery, accuracy, completeData) {
             window.DynamicModeSelector.stopSpeedTimer();
         }
         
-        const totalQuestions = this.questions.length;
-        const correctAnswers = this.answers.filter(a => a.isCorrect).length;
+        const gradeableQuestions = this.questions.filter(q => !(q.question_type === 'SIM' && q.mode_sim === 'study'));
+        const totalQuestions = gradeableQuestions.length > 0 ? gradeableQuestions.length : 1;
+        const correctAnswers = this.answers.filter(a => a.isCorrect === true).length;
         const mastery = Math.min(100, Math.max(0, Math.round((correctAnswers / totalQuestions) * 100)));
         const isQuestPassed = mastery >= 75;
         
@@ -794,6 +800,10 @@ createCompactGemDisplay() {
             <div class="compact-gem master">
                 <img src="/multimedia_assets/gems/master_gem.svg" class="compact-gem-icon">
                 <span id="compact-master-gems">0</span>
+            </div>
+            <div class="compact-gem rare-gem" style="border: 1px solid #bfdbfe; background: #eff6ff;">
+                <span style="font-size: 1.2rem;">💎</span>
+                <span id="compact-rare-gems" style="color: #1d4ed8;">0</span>
             </div>
         </div>
     `;

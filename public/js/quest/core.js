@@ -158,7 +158,16 @@ loadQuestion(index, context, overrideQuestion = null) {
     
     // Update counter
     const counterEl = document.querySelector('.question-counter');
-    if (counterEl) counterEl.textContent = `${index + 1}/${context.questions.length}`;
+    if (counterEl) {
+        const gradableTotal = context.questions.filter(q => !(q.question_type === 'SIM' && q.mode_sim === 'study')).length;
+        let gradableIndex = 0;
+        for (let i = 0; i <= index; i++) {
+            if (!(context.questions[i].question_type === 'SIM' && context.questions[i].mode_sim === 'study')) {
+                gradableIndex++;
+            }
+        }
+        counterEl.textContent = `${Math.min(gradableIndex, gradableTotal)}/${gradableTotal}`;
+    }
     
     // Set question text
     const questionTextEl = document.querySelector('.question-text');

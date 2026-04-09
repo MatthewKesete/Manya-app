@@ -256,27 +256,62 @@ showDoubleScreenFlash(type) {
         const overlay = document.querySelector('.quest-complete-overlay');
         if (!overlay) return;
         
+        // Stars generation
+        const stars = completeData.stars || 0;
+        let starHtml = '';
+        for (let i = 1; i <= 3; i++) {
+            starHtml += `<span class="quest-result-star ${i <= stars ? 'earned' : 'empty'}" style="font-size: 2.5rem; color: ${i <= stars ? '#fbbf24' : '#e2e8f0'}; margin: 0 5px;">${i <= stars ? '⭐' : '☆'}</span>`;
+        }
+        
         let rewardMarkup = `
-            <div style="font-size:1.2rem; margin:10px 0; color:#475569;">📊 Accuracy: ${Math.round(accuracy)}%</div>
-            ${completeData.gemsAwarded ? `<div style="font-size:1.4rem; color:#8b5cf6; margin:8px 0;">💎 Earned ${completeData.gemsAwarded} Gems!</div>` : ''}
-            ${completeData.chestAwarded ? `<div style="font-size:1.4rem; color:#f59e0b; margin:8px 0;">🎁 Earned 1 ${completeData.chestAwarded.toUpperCase()} Chest!</div>` : ''}
+            <div style="font-size:1.1rem; margin:10px 0; color:#64748b;">Accuracy: ${Math.round(accuracy)}% | Mastery: ${mastery}%</div>
+            
+            <div class="quest-rewards-grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin: 20px 0;">
+                <div class="q-reward-item" style="background: #f8fafc; padding: 12px; border-radius: 12px; display: flex; align-items: center; gap: 8px;">
+                    <span style="font-size: 1.4rem;">⭐</span>
+                    <span style="font-weight: 600;">+${completeData.xpEarned || 0} XP</span>
+                </div>
+                ${completeData.coinsAwarded || completeData.coinsEarned ? `
+                <div class="q-reward-item" style="background: #f8fafc; padding: 12px; border-radius: 12px; display: flex; align-items: center; gap: 8px;">
+                    <span style="font-size: 1.4rem;">🪙</span>
+                    <span style="font-weight: 600;">+${completeData.coinsAwarded || completeData.coinsEarned} Coins</span>
+                </div>` : ''}
+                ${completeData.gemsAwarded || completeData.gemsEarned ? `
+                <div class="q-reward-item" style="background: #f0f7ff; padding: 12px; border-radius: 12px; display: flex; align-items: center; gap: 8px; border: 1px solid #bfdbfe;">
+                    <span style="font-size: 1.4rem;">💎</span>
+                    <span style="font-weight: 600; color: #2563eb;">+${completeData.gemsAwarded || completeData.gemsEarned} Gem!</span>
+                </div>` : ''}
+                ${completeData.chestAwarded || completeData.chest ? `
+                <div class="q-reward-item" style="background: #fff7ed; padding: 12px; border-radius: 12px; display: flex; align-items: center; gap: 8px; border: 1px solid #fed7aa;">
+                    <span style="font-size: 1.4rem;">🎁</span>
+                    <span style="font-weight: 600; color: #9a3412;">${(completeData.chestAwarded || completeData.chest).toUpperCase()} CHEST</span>
+                </div>` : ''}
+            </div>
         `;
 
         if (completeData.achievementsUnlocked && completeData.achievementsUnlocked.length > 0) {
-            rewardMarkup += `<div style="margin-top:15px; border-top:1px solid #cbd5e1; padding-top:10px;">
-                <h4 style="color:#10b981; font-weight:bold;">🏆 Achievements Unlocked!</h4>`;
-            completeData.achievementsUnlocked.forEach(a => {
-                rewardMarkup += `<div style="font-size:0.9rem; color:#334155;">${a.icon} ${a.name}</div>`;
-            });
-            rewardMarkup += `</div>`;
+            rewardMarkup += `
+            <div class="quest-achievements-section" style="margin-top: 15px; text-align: left;">
+                <h4 style="color: #059669; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px;">🏆 New Achievement Unlocked!</h4>
+                <div style="display: flex; flex-direction: column; gap: 6px;">
+                    ${completeData.achievementsUnlocked.map(a => `
+                        <div style="display: flex; align-items: center; gap: 8px; background: #ecfdf5; padding: 8px 12px; border-radius: 8px;">
+                            <span style="font-size: 1.2rem;">${a.icon}</span>
+                            <span style="font-weight: 500; color: #065f46;">${a.name}</span>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>`;
         }
 
-        // Remove mastery percentage display natively, swap with dynamic data
         const mScore = overlay.querySelector('.mastery-score');
         if (mScore) mScore.style.display = 'none';
 
         overlay.querySelector('.earned-rewards').innerHTML = `
-            <div style="font-size:1.8rem; font-weight:bold; margin-bottom:15px; color:#1e293b;">${completeData.stars > 0 ? '🎉 Quest Cleared!' : '🛡️ Quest Finished'}</div>
+            <div style="margin-bottom: 15px;">
+                <div style="font-size: 1.2rem; font-weight: 700; color: #1e293b; margin-bottom: 8px;">${stars === 3 ? 'PERFECT! 🌟🌟🌟' : stars === 2 ? 'GREAT JOB! 🌟🌟' : 'QUEST FINISHED! 🌟'}</div>
+                <div class="star-display">${starHtml}</div>
+            </div>
             ${rewardMarkup}
         `;
         overlay.querySelector('.continue-btn').onclick = onContinue;
