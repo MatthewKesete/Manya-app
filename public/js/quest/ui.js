@@ -209,19 +209,79 @@ showDoubleScreenFlash(type) {
         }, 2000);
     },
 
-showCompletion(mastery, accuracy, onContinue) {
-    const overlay = document.querySelector('.quest-complete-overlay');
-    if (!overlay) return;
-    
-    // Remove mastery percentage display - just show simple completion message
-    overlay.querySelector('.mastery-score').style.display = 'none';
-    overlay.querySelector('.earned-rewards').innerHTML = `
-        <div>🎉 Quest Complete! 🎉</div>
-        <div>📊 Accuracy: ${Math.round(accuracy)}%</div>
-    `;
-    overlay.querySelector('.continue-btn').onclick = onContinue;
-    overlay.style.display = 'flex';
-},
+    showChestDrop(chestType) {
+        const drop = document.createElement('div');
+        const icon = chestType === 'gold' ? '👑 Gold' : chestType === 'silver' ? '🥈 Silver' : '🥉 Bronze';
+        drop.style.cssText = `
+            position: fixed; top: 20%; left: 50%; transform: translateX(-50%);
+            background: linear-gradient(135deg, #fdfbfb 0%, #ebedee 100%);
+            padding: 15px 30px; border-radius: 30px; border: 2px solid #fbbf24;
+            font-weight: bold; color: #78350f; z-index: 20005;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2); animation: dropDown 0.5s ease-out forwards;
+        `;
+        drop.innerHTML = `🎁 You found a <b>${icon} Chest</b>! Check your profile later.`;
+        document.body.appendChild(drop);
+        if (window.MANYAAudioSystem) window.MANYAAudioSystem.playCoinCollect();
+        setTimeout(() => {
+            drop.style.animation = 'fadeOut 0.5s ease-out forwards';
+            setTimeout(() => drop.remove(), 500);
+        }, 3000);
+    },
+
+    showAchievementPopup(ach) {
+        const popup = document.createElement('div');
+        popup.style.cssText = `
+            position: fixed; bottom: 20px; right: 20px;
+            background: #1e293b; color: white; padding: 15px 20px;
+            border-radius: 12px; border-left: 4px solid #10b981;
+            z-index: 20010; box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            animation: slideInRight 0.5s ease-out forwards; display: flex; align-items: center; gap: 15px;
+        `;
+        popup.innerHTML = `
+            <div style="font-size: 2rem;">${ach.icon || '🏆'}</div>
+            <div>
+                <div style="font-size: 0.8rem; color: #94a3b8; text-transform: uppercase; font-weight: bold;">Achievement Unlocked</div>
+                <div style="font-weight: 600; font-size: 1.1rem; margin-top: 2px;">${ach.name}</div>
+                <div style="font-size: 0.85rem; color: #cbd5e1; margin-top: 4px;">${ach.reward_gems ? '+' + ach.reward_gems + ' 💎' : ''} ${ach.reward_coins ? '+' + ach.reward_coins + ' 🪙' : ''}</div>
+            </div>
+        `;
+        document.body.appendChild(popup);
+        setTimeout(() => {
+            popup.style.animation = 'fadeOutRight 0.5s ease-out forwards';
+            setTimeout(() => popup.remove(), 500);
+        }, 5000);
+    },
+
+    showCompletion(mastery, accuracy, completeData, onContinue) {
+        const overlay = document.querySelector('.quest-complete-overlay');
+        if (!overlay) return;
+        
+        let rewardMarkup = `
+            <div style="font-size:1.2rem; margin:10px 0; color:#475569;">📊 Accuracy: ${Math.round(accuracy)}%</div>
+            ${completeData.gemsAwarded ? `<div style="font-size:1.4rem; color:#8b5cf6; margin:8px 0;">💎 Earned ${completeData.gemsAwarded} Gems!</div>` : ''}
+            ${completeData.chestAwarded ? `<div style="font-size:1.4rem; color:#f59e0b; margin:8px 0;">🎁 Earned 1 ${completeData.chestAwarded.toUpperCase()} Chest!</div>` : ''}
+        `;
+
+        if (completeData.achievementsUnlocked && completeData.achievementsUnlocked.length > 0) {
+            rewardMarkup += `<div style="margin-top:15px; border-top:1px solid #cbd5e1; padding-top:10px;">
+                <h4 style="color:#10b981; font-weight:bold;">🏆 Achievements Unlocked!</h4>`;
+            completeData.achievementsUnlocked.forEach(a => {
+                rewardMarkup += `<div style="font-size:0.9rem; color:#334155;">${a.icon} ${a.name}</div>`;
+            });
+            rewardMarkup += `</div>`;
+        }
+
+        // Remove mastery percentage display natively, swap with dynamic data
+        const mScore = overlay.querySelector('.mastery-score');
+        if (mScore) mScore.style.display = 'none';
+
+        overlay.querySelector('.earned-rewards').innerHTML = `
+            <div style="font-size:1.8rem; font-weight:bold; margin-bottom:15px; color:#1e293b;">${completeData.stars > 0 ? '🎉 Quest Cleared!' : '🛡️ Quest Finished'}</div>
+            ${rewardMarkup}
+        `;
+        overlay.querySelector('.continue-btn').onclick = onContinue;
+        overlay.style.display = 'flex';
+    }
 };
 
 window.QuestUI = QuestUI;

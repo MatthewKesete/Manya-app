@@ -3,6 +3,9 @@ const express = require('express');
 const router = express.Router();
 const questEngine = require('../../engines/questEngine');
 const pool = require('../../config/database');
+const gamificationService = require('../../services/gamificationService');
+const chestService = require('../../services/chestService');
+const achievementService = require('../../services/achievementService');
 
 // GET /api/quests/:topic/:subtopicId/:questId
 // GET /api/quests/:topic/:subtopicId/:questId
@@ -133,12 +136,39 @@ router.post('/complete', async (req, res) => {
             }
         }
         
+        // Gamification End of Quest Additions
+        let stars = 0;
+        if (mastery >= 90) stars = 3;
+        else if (mastery >= 70) stars = 2;
+        else if (mastery >= 50) stars = 1;
+
+        let gemsAwarded = stars;
+        if (gemsAwarded > 0) {
+            await gamificationService.initializeUser(userId);
+            await gamificationService.awardGems(userId, 'general', 0, gemsAwarded, 'quest_complete');
+        }
+
+        let chestAwarded = null;
+        if (stars === 3) {
+            chestAwarded = 'gold';
+            await chestService.awardChest(userId, 'gold');
+        } else if (stars === 2) {
+            chestAwarded = 'silver';
+            await chestService.awardChest(userId, 'silver');
+        }
+
+        const achievementsUnlocked = await achievementService.checkAndAwardAchievements(userId);
+        
         res.json({
             success: true,
             mastery,
             nextUnlocked,
             nextQuestId: nextUnlocked ? questId + 1 : null,
-            message: nextUnlocked ? '🎉 Quest complete! Next quest unlocked!' : 'Quest complete!'
+            message: nextUnlocked ? '🎉 Quest complete! Next quest unlocked!' : 'Quest complete!',
+            stars,
+            gemsAwarded,
+            chestAwarded,
+            achievementsUnlocked
         });
         
     } catch (err) {

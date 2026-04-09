@@ -173,6 +173,12 @@ const ChallengesScreen = {
                 userId: userId
             });
             
+            const selectedMode = await this.promptQuestMode();
+            console.log('🎮 Selected quest mode:', selectedMode);
+            if (window.DynamicModeSelector) {
+                window.DynamicModeSelector.setForcedMode(selectedMode);
+            }
+            
             const url = `/api/quests/${encodeURIComponent(topicName)}/${challenge.id}/${questId}?userId=${userId}`;
             console.log('📡 Fetching:', url);
             
@@ -202,6 +208,126 @@ const ChallengesScreen = {
         } finally {
             hideLoading();
         }
+    },
+
+    async promptQuestMode() {
+        if (!window.DynamicModeSelector) return 'random';
+
+        return new Promise(resolve => {
+            const existing = document.getElementById('mode-select-overlay');
+            if (existing) {
+                existing.remove();
+            }
+
+            const overlay = document.createElement('div');
+            overlay.id = 'mode-select-overlay';
+            overlay.className = 'mode-select-overlay';
+            overlay.innerHTML = `
+                <div class="mode-select-card">
+                    <h2>Choose a quest mode</h2>
+                    <p>Select one of these modes to try the dynamic features immediately.</p>
+                    <div class="mode-buttons">
+                        <button class="mode-button" data-mode="normal">Normal</button>
+                        <button class="mode-button" data-mode="speedTimer">Speed Timer</button>
+                        <button class="mode-button" data-mode="reverse">Reverse</button>
+                        <button class="mode-button" data-mode="random">Dynamic</button>
+                    </div>
+                    <button class="mode-close-btn">Start Quest</button>
+                </div>
+            `;
+
+            document.body.appendChild(overlay);
+
+            const chooseMode = (mode) => {
+                if (window.DynamicModeSelector) {
+                    window.DynamicModeSelector.setForcedMode(mode);
+                }
+                overlay.remove();
+                resolve(mode);
+            };
+
+            overlay.addEventListener('click', (event) => {
+                if (event.target.classList.contains('mode-button')) {
+                    document.querySelectorAll('.mode-button').forEach(btn => btn.classList.remove('selected'));
+                    event.target.classList.add('selected');
+                }
+                if (event.target.classList.contains('mode-close-btn')) {
+                    const selected = overlay.querySelector('.mode-button.selected');
+                    const mode = selected ? selected.dataset.mode : 'random';
+                    chooseMode(mode);
+                }
+            });
+
+            const style = document.createElement('style');
+            style.id = 'mode-select-styles';
+            style.textContent = `
+                .mode-select-overlay {
+                    position: fixed;
+                    inset: 0;
+                    background: rgba(0, 0, 0, 0.75);
+                    z-index: 30000;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    padding: 24px;
+                }
+                .mode-select-card {
+                    background: #111827;
+                    color: #f8fafc;
+                    border-radius: 22px;
+                    padding: 28px 26px;
+                    max-width: 460px;
+                    width: 100%;
+                    box-shadow: 0 24px 80px rgba(0,0,0,0.45);
+                    text-align: center;
+                }
+                .mode-select-card h2 {
+                    margin-bottom: 10px;
+                    font-size: 1.55rem;
+                }
+                .mode-select-card p {
+                    margin-bottom: 22px;
+                    color: #cbd5e1;
+                    line-height: 1.55;
+                }
+                .mode-buttons {
+                    display: flex;
+                    flex-wrap: wrap;
+                    gap: 12px;
+                    justify-content: center;
+                    margin-bottom: 18px;
+                }
+                .mode-button {
+                    border: 1px solid rgba(255,255,255,0.18);
+                    background: rgba(255,255,255,0.05);
+                    color: #f8fafc;
+                    padding: 12px 18px;
+                    border-radius: 14px;
+                    min-width: 108px;
+                    cursor: pointer;
+                    transition: transform 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+                }
+                .mode-button.selected,
+                .mode-button:hover {
+                    background: #2563eb;
+                    border-color: #7dd3fc;
+                    transform: translateY(-1px);
+                }
+                .mode-close-btn {
+                    border: none;
+                    background: #38bdf8;
+                    color: #0f172a;
+                    font-weight: 700;
+                    padding: 12px 24px;
+                    border-radius: 14px;
+                    cursor: pointer;
+                    width: 100%;
+                }
+            `;
+            if (!document.getElementById('mode-select-styles')) {
+                document.head.appendChild(style);
+            }
+        });
     },
     
     async showSubtopicTeaser(challenge) {

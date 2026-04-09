@@ -143,9 +143,11 @@ const DynamicModeSelector = {
     },
     
     // ========== SPEED TIMER MODE ==========
-    async startSpeedTimer(question, onTimeout, onSuccess, timeLimit = 35) {
+    async startSpeedTimer(question, onTimeout, onSuccess, timeLimit = 18) {
+        if (this.speedTimerInterval) clearInterval(this.speedTimerInterval);
         this.speedTimerActive = true;
         this.timeLeft = timeLimit;
+        this.initialTime = timeLimit;
         
         // Show timer UI
         this.showTimerUI(timeLimit);
@@ -167,8 +169,8 @@ const DynamicModeSelector = {
             this.timeLeft--;
             this.updateTimerDisplay();
             
-            // Last 10 seconds - orange color + faster tick
-            if (this.timeLeft <= 10) {
+            // Last 5 seconds - orange color + faster tick
+            if (this.timeLeft <= 5) {
                 this.updateTimerCritical();
             }
             
@@ -208,7 +210,7 @@ const DynamicModeSelector = {
         const timerDiv = document.getElementById('speed-timer');
         if (!timerDiv) return;
         
-        const percentage = (this.timeLeft / 35) * 100;
+        const percentage = (this.timeLeft / this.initialTime) * 100;
         const bar = timerDiv.querySelector('.timer-bar');
         const timeSpan = timerDiv.querySelector('.timer-time');
         
@@ -224,8 +226,8 @@ const DynamicModeSelector = {
         const bar = timerDiv.querySelector('.timer-bar');
         if (bar) bar.style.backgroundColor = '#f97316';
         
-        // Trigger blackout drama effect at 10 seconds
-        if (this.timeLeft === 10) {
+        // Trigger blackout drama effect at 5 seconds
+        if (this.timeLeft === 5) {
             this.triggerBlackoutDrama();
         }
         
@@ -282,7 +284,9 @@ const DynamicModeSelector = {
     celebrateSpeedWin() {
         // Big celebration
         if (window.ConfettiService) {
-            window.ConfettiService.celebrate();
+            if (typeof window.ConfettiService.showConfetti === 'function') {
+                window.ConfettiService.showConfetti(2000, 150);
+            }
         }
         
         // Show champion message

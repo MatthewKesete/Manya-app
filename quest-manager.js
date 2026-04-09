@@ -1,4 +1,8 @@
 // quest-manager.js - Complete quest system with dynamic counts and rewards
+const coinService = require('./server/services/coinService');
+const gamificationService = require('./server/services/gamificationService');
+const chestService = require('./server/services/chestService');
+const achievementService = require('./server/services/achievementService');
 
 class QuestManager {
     constructor() {
@@ -337,11 +341,47 @@ class QuestManager {
                 // Calculate mastery (simplified)
                 const mastery = Math.min(100, Math.round((points / (questProgress.totalQuestions * 3)) * 100));
                 
+                // Calculate stars based on mastery
+                let stars = 0;
+                if (mastery >= 90) stars = 3;
+                else if (mastery >= 70) stars = 2;
+                else if (mastery >= 50) stars = 1;
+
+                // End of quest bonus
+                let bonusCoins = 0;
+                if (stars === 3) bonusCoins = await coinService.getConfig('coins_per_3_star', 80);
+                else if (stars === 2) bonusCoins = await coinService.getConfig('coins_per_2_star', 50);
+                else if (stars === 1) bonusCoins = await coinService.getConfig('coins_per_1_star', 30);
+
+                // End of quest bonus: Gems and Chests
+                let gemsAwarded = stars; // 1, 2, or 3 gems
+                if (gemsAwarded > 0) {
+                    await gamificationService.initializeUser(userId);
+                    await gamificationService.awardGems(userId, 'general', 0, gemsAwarded, 'quest_complete');
+                }
+
+                let chestAwarded = null;
+                if (stars === 3) {
+                    chestAwarded = 'gold';
+                    await chestService.awardChest(userId, 'gold');
+                } else if (stars === 2) {
+                    chestAwarded = 'silver';
+                    await chestService.awardChest(userId, 'silver');
+                }
+
+                if (bonusCoins > 0) {
+                    await pool.query(
+                        `UPDATE user_coins SET coin_balance = coin_balance + $2, updated_at = CURRENT_TIMESTAMP WHERE user_id = $1`,
+                        [userId, bonusCoins]
+                    );
+                }
+
                 await pool.query(
                     `UPDATE user_quests SET 
                         "status" = 'completed',
                         "mastery" = $3,
-                        "completedAt" = $4
+                        "completedAt" = $4,
+                        "answered_questions" = '{}'
                      WHERE "userId" = $1 AND "questId" = $2`,
                     [userId, questId, mastery, new Date()]
                 );
@@ -353,8 +393,21 @@ class QuestManager {
                     ) VALUES ($1, $2, $3, $4, $5)`,
                     [userId, questId, 'xp', quest.xpReward, quest.badgeIcon]
                 );
+
+                // Achievements Check
+                const achievementsUnlocked = await achievementService.checkAndAwardAchievements(userId);
                 
-                return { completed: true, mastery, xpEarned: quest.xpReward, badge: quest.badgeIcon };
+                return { 
+                    completed: true, 
+                    mastery, 
+                    stars, 
+                    bonusCoins, 
+                    gemsAwarded, 
+                    chestAwarded, 
+                    xpEarned: quest.xpReward, 
+                    badge: quest.badgeIcon,
+                    achievementsUnlocked 
+                };
             }
             
             return { completed: false, progress: questProgress?.progress };
@@ -411,6 +464,54 @@ class QuestManager {
         }
         
         return null;
+    }
+
+    /**
+     * Skip a quest dynamically
+     */
+    async skipQuest(userId, questId, pool) {
+        const quest = this.getQuest(questId);
+        if (!quest) return { success: false, reason: 'invalid_quest' };
+
+        const base = await coinService.getConfig('skip_quest_base', 350);
+        
+        // Let's assume difficulty mappings: easy=1, medium=2, hard=3, exam=4
+        let diffLevel = 1;
+        if (quest.difficulty === 'medium') diffLevel = 2;
+        else if (quest.difficulty === 'hard') diffLevel = 3;
+        else if (quest.difficulty === 'exam') diffLevel = 4;
+
+        const skipPerDiff = await coinService.getConfig('skip_per_difficulty', 80);
+        const skipPerQuestion = await coinService.getConfig('skip_per_question', 6);
+
+        const diffBonus = diffLevel * skipPerDiff;
+        const totalQuestions = quest.baseQuestions; // default
+        const questionBonus = totalQuestions * skipPerQuestion;
+
+        const skipCost = Math.round(base + diffBonus + questionBonus);
+
+        const userBalance = await coinService.getCoinBalance(userId);
+        if (userBalance < skipCost) {
+            return { success: false, reason: 'insufficient_coins', required: skipCost, balance: userBalance };
+        }
+
+        // Deduct coins
+        await pool.query(
+            `UPDATE user_coins SET coin_balance = coin_balance - $2 WHERE user_id = $1`,
+            [userId, skipCost]
+        );
+
+        // Mark quest skipped - no bonus given, coins already earned in this attempt kept, array reset
+        await pool.query(
+            `UPDATE user_quests SET 
+                "status" = 'skipped',
+                "completedAt" = $3,
+                "answered_questions" = '{}'
+             WHERE "userId" = $1 AND "questId" = $2`,
+            [userId, questId, new Date()]
+        );
+
+        return { success: true, skipCost, newBalance: userBalance - skipCost };
     }
 }
 

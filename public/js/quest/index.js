@@ -145,8 +145,15 @@ async submitAnswer() {
     try {
         await window.QuestRewards.trackEmotion(window.App?.currentUser || 'student-001', 
             isCorrect ? 'confident' : 'frustrated', isCorrect ? 80 : 60, 'answer_submitted', responseTime);
-        await window.QuestRewards.trackReward(window.App?.currentUser || 'student-001', 
+        const rewardData = await window.QuestRewards.trackReward(window.App?.currentUser || 'student-001', 
             isCorrect, this.hintUsed, this.currentSubject, (awarded) => window.QuestUI.showRewardAnimation(awarded));
+        
+        if (rewardData && rewardData.chestAwarded) {
+             window.QuestUI.showChestDrop(rewardData.chestAwarded);
+        }
+        if (rewardData && rewardData.achievementsUnlocked && rewardData.achievementsUnlocked.length > 0) {
+             rewardData.achievementsUnlocked.forEach(ach => window.QuestUI.showAchievementPopup(ach));
+        }
         await window.QuestRewards.updateStreak(window.App?.currentUser || 'student-001', isCorrect, window.MANYACharacterSystem);
         coinResult = await window.QuestRewards.updateCoins(window.App?.currentUser || 'student-001', 
             isCorrect, this.hintUsed, (balance) => window.QuestRewards.updateCoinDisplay(balance));
@@ -383,7 +390,7 @@ loadSpeedTimerQuestion(question) {
             question,
             () => this.handleSpeedTimerTimeout(),
             () => window.DynamicModeSelector.celebrateSpeedWin(),
-            35
+            18
         ).catch(() => {});
     }
 },
@@ -412,7 +419,7 @@ async handleSpeedTimerTimeout() {
         selectedAnswer: null,
         correctAnswer: correctAnswer,
         isCorrect: false,
-        timeSpent: (window.DynamicModeSelector && window.DynamicModeSelector.timeLeft >= 0) ? ((35 - window.DynamicModeSelector.timeLeft) * 1000) : 35000,
+        timeSpent: (window.DynamicModeSelector && window.DynamicModeSelector.timeLeft >= 0) ? ((18 - window.DynamicModeSelector.timeLeft) * 1000) : 18000,
         hintUsed: this.hintUsed,
         answerChanged: this.answerChanged,
         changeCount: this.changeCount,
@@ -432,13 +439,48 @@ async handleSpeedTimerTimeout() {
         window.MANYAAudioSystem.playWrong();
     }
     this.showDoubleScreenFlash('wrong');
+    
+    document.querySelectorAll('.option').forEach(opt => {
+        if (opt.dataset.letter === correctAnswer) {
+            opt.classList.add('gentle-highlight');
+        }
+    });
+    
     this.showGrowthMindsetMessage();
     window.QuestUI.showWordFlash('Time');
+    
+    if (window.MANYACharacterSystem) {
+        window.MANYACharacterSystem.speak("Out of time! ⏰ Let's check the right answer.", 2500);
+    }
 
-    setTimeout(() => {
-        this.currentQuestionIndex++;
-        this.loadNextContent();
-    }, 1500);
+    let detailedSolution = '';
+    try {
+        const solutionResponse = await fetch(`/api/solution/${question.id}`);
+        if (solutionResponse.ok) {
+            const solutionData = await solutionResponse.json();
+            detailedSolution = solutionData.detailedSolution || '';
+        }
+    } catch (err) {}
+    
+    if (!detailedSolution) {
+        detailedSolution = `The correct answer is ${correctAnswer}. ${this.getOptionText(question, correctAnswer)}. You gotta be faster next time! ⚡`;
+    }
+
+    const self = this;
+    window.QuestUI.showLearningModal(
+        question,
+        'Time Out',
+        correctAnswer,
+        this.getOptionText.bind(this),
+        function() {
+            document.querySelectorAll('.option.gentle-highlight').forEach(opt => {
+                opt.classList.remove('gentle-highlight');
+            });
+            self.currentQuestionIndex++;
+            self.loadNextContent();
+        },
+        detailedSolution
+    );
 },
 
 loadReverseQuestion(question) {
@@ -569,8 +611,9 @@ loadReverseQuestion(question) {
         window.QuestUI.showChestUnlockAnimation();
     },
     
-showCompletion(mastery) {
-        window.QuestUI.showCompletion(mastery, this.params.accuracy, () => {
+showCompletion(mastery, accuracy, completeData) {
+        window.QuestUI.showCompletion(mastery, accuracy, completeData, () => {
+        const overlay = document.querySelector('.quest-complete-overlay');
         if (overlay) overlay.style.display = 'none';
         // Reset progress bar when quest ends
         if (window.ProgressBarSystem) {
@@ -660,10 +703,10 @@ showCompletion(mastery) {
                 }
                 
                 setTimeout(() => {
-                    this.showCompletion(mastery);
+                    this.showCompletion(mastery, this.params.accuracy, completeData);
                 }, 2500);
             } else {
-                this.showCompletion(mastery);
+                this.showCompletion(mastery, this.params.accuracy, completeData);
             }
             
         } catch (err) {

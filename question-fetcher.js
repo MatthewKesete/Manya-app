@@ -6,6 +6,9 @@ const MasteryCalculator = require('./mastery-calculator');
 const PriorityScorer = require('./priority-scorer');
 const QuestManager = require('./quest-manager');
 const SessionManager = require('./session-manager');
+const coinService = require('./server/services/coinService');
+const chestService = require('./server/services/chestService');
+const achievementService = require('./server/services/achievementService');
 
 class QuestionFetcher {
     constructor(dbPath = './manya.db') {
@@ -304,6 +307,30 @@ class QuestionFetcher {
             }
             
             const isCorrect = (answerData.selectedAnswer === correctAnswer);
+            
+            let coinsAwarded = 0;
+            let chestAwarded = null;
+
+            if (isCorrect) {
+                const currentQuestId = session.currentQuestId || 1;
+                const isSpeedOrReverse = answerData.mode === 'speed' || answerData.mode === 'reverse';
+                
+                const coinResult = await coinService.awardCoinsOnCorrectAnswer(
+                    answerData.userId,
+                    answerData.questionId,
+                    question.Topic || 'Unknown',
+                    currentQuestId,
+                    isSpeedOrReverse
+                );
+                coinsAwarded = coinResult.awarded || 0;
+
+                // 20% chance to earn a bronze chest on correct answers
+                if (Math.random() < 0.20) {
+                    await chestService.awardChest(answerData.userId, 'bronze');
+                    chestAwarded = 'bronze';
+                }
+            }
+            
             const pointsEarned = isCorrect ? (answerData.hintUsed ? 5 : 10) : 0;
             
             // Prepare result for quest tracking
@@ -337,6 +364,14 @@ class QuestionFetcher {
             answerData.pointsEarned = pointsEarned;
             
             const result = await this.db.submitAnswer(answerData);
+            result.coinsAwarded = coinsAwarded;
+            if (chestAwarded) result.chestAwarded = chestAwarded;
+
+            // Check achievements dynamically after an answer (to catch question counters)
+            const achievementsUnlocked = await achievementService.checkAndAwardAchievements(answerData.userId);
+            if (achievementsUnlocked && achievementsUnlocked.length > 0) {
+                result.achievementsUnlocked = achievementsUnlocked;
+            }
             
             return result;
             

@@ -47,31 +47,18 @@ class GamificationService {
         }
     }
     
-    // Calculate gems earned from an answer
+    // Calculate gems earned from an answer (Overridden: Gems are now rare premium currency)
     calculateGems(isCorrect, hintUsed, subject, streakMultiplier = 1) {
-        let baseGems = 0;
-        
-        if (isCorrect) {
-            baseGems = hintUsed ? 1 : 3;
-        }
-        
-        // Apply streak multiplier
-        let subjectGems = Math.floor(baseGems * streakMultiplier);
-        let overallGems = hintUsed ? 0.5 : 1;
-        overallGems = Math.floor(overallGems * streakMultiplier);
-        
-        // Bonus for perfect answer (no hint, correct)
-        if (isCorrect && !hintUsed) {
-            subjectGems += 1;
-            overallGems += 1;
-        }
-        
+        // As per new gamification rules, routine answers do NOT grant gems.
+        // Gems are main earned via Quest Completion, Acheivements, and Treasure Chests.
         return {
-            subjectGems,
-            overallGems,
-            baseGems: isCorrect ? (hintUsed ? 1 : 3) : 0
+            subjectGems: 0,
+            overallGems: 0,
+            baseGems: 0
         };
     }
+        
+
     
     // Award gems to user
     async awardGems(userId, subject, subjectGems, overallGems, context = 'answer_correct') {

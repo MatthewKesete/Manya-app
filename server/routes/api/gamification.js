@@ -2,6 +2,8 @@
 const express = require('express');
 const router = express.Router();
 const gamificationService = require('../../services/gamificationService');
+const chestService = require('../../services/chestService');
+const achievementService = require('../../services/achievementService');
 
 // Get user's gems
 router.get('/gems/:userId', async (req, res) => {
@@ -52,6 +54,16 @@ router.post('/award', async (req, res) => {
             context
         );
         
+        let chestAwarded = null;
+        let achievementsUnlocked = [];
+
+        if (isCorrect && Math.random() < 0.20) {
+            await chestService.awardChest(userId, 'bronze');
+            chestAwarded = 'bronze';
+        }
+
+        achievementsUnlocked = await achievementService.checkAndAwardAchievements(userId);
+        
         res.json({
             success: true,
             awarded: gems,
@@ -59,7 +71,9 @@ router.post('/award', async (req, res) => {
             streak: {
                 current: streak.current_streak || 0,
                 multiplier: streakMultiplier
-            }
+            },
+            chestAwarded,
+            achievementsUnlocked
         });
     } catch (err) {
         console.error('Error awarding gems:', err);
