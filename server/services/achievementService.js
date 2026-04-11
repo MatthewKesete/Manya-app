@@ -22,11 +22,8 @@ class AchievementService {
     async evaluateCriterion(userId, conditionType, conditionSubtopicId) {
         switch(conditionType) {
             case 'questions_answered':
-                // Check all answered questions in user_quests or a global stats view.
-                // Assuming user_quests total progress as fallback or we can use another table if we know it.
-                // We'll use a simplistic aggregation of user_quests progress for this example
                 const qtRes = await pool.query(
-                    `SELECT COALESCE(SUM(progress), 0) as total FROM user_quests WHERE "userId" = $1`,
+                    `SELECT COUNT(*) as total FROM user_answer WHERE "userId" = $1`,
                     [userId]
                 );
                 return parseInt(qtRes.rows[0].total) || 0;
@@ -43,9 +40,9 @@ class AchievementService {
                 return parseInt(chestsRes.rows[0].total) || 0;
 
             case 'quests_completed':
-                // If a subtopic is required, we would filter here. Currently global.
+                // Count how many quests have been played (rows in user_challenge_progress)
                 const qcRes = await pool.query(
-                    `SELECT COUNT(*) as total FROM user_quests WHERE "userId" = $1 AND status = 'completed'`,
+                    `SELECT COUNT(*) as total FROM user_challenge_progress WHERE "userId" = $1`,
                     [userId]
                 );
                 return parseInt(qcRes.rows[0].total) || 0;

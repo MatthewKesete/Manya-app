@@ -239,31 +239,107 @@ async loadUserData() {
         grid.innerHTML = '<div class="loading">Opening your treasure box...</div>';
         
         try {
-            const response = await fetch(`/api/gamification/library/${this.currentUser}`);
-            const data = await response.json();
-            const content = Array.isArray(data) ? data : [];
+            // Fetch both pending chests and unlocked library content in parallel
+            const [chestsResp, libraryResp] = await Promise.all([
+                fetch(`/api/gamification/chests/${this.currentUser}`),
+                fetch(`/api/gamification/library/${this.currentUser}`)
+            ]);
             
-            if (content.length === 0) {
-                grid.innerHTML = '<div class="empty-state">Your treasure box is empty. Open chests to find recaps, simulations, and more!</div>';
-                return;
+            const chestsData = await chestsResp.json();
+            const libraryData = await libraryResp.json();
+            
+            const chests = Array.isArray(chestsData) ? chestsData : [];
+            const content = Array.isArray(libraryData) ? libraryData : [];
+            
+            const chestTypeEmoji = { gold: '🟡', silver: '⚪', bronze: '🟤' };
+            const chestTypeColor = { gold: '#fef3c7', silver: '#f1f5f9', bronze: '#fef2e8' };
+            
+            let html = '';
+            
+            // Section 1: Pending Chests
+            if (chests.length > 0) {
+                html += `<div style="margin-bottom:20px;">
+                    <h3 style="font-size:1.1rem;color:#1e293b;margin:0 0 12px 0;">🎁 Chests to Open (${chests.length})</h3>
+                    <div class="library-grid">`;
+                html += chests.map(chest => `
+                    <div class="library-item-card" style="background:${chestTypeColor[chest.chest_type] || '#f8fafc'}; border:2px solid #e2e8f0;">
+                        <div class="item-icon">${chestTypeEmoji[chest.chest_type] || '📦'}</div>
+                        <div class="item-info">
+                            <h4 class="item-name">${chest.chest_type.toUpperCase()} CHEST</h4>
+                            <span class="item-date">Received ${new Date(chest.created_at).toLocaleDateString()}</span>
+                        </div>
+                        <button class="play-btn" style="background:#f59e0b;" onclick="App.openChest(${chest.id}, this)">Open!</button>
+                    </div>
+                `).join('');
+                html += `</div></div>`;
             }
             
-            grid.innerHTML = content.map(item => `
-                <div class="library-item-card" data-content-id="${item.content_id}">
-                    <div class="item-icon">${item.content_id.includes('recap') ? '📖' : '🎮'}</div>
-                    <div class="item-info">
-                        <h4 class="item-name">${item.content_id.replace(/_/g, ' ').toUpperCase()}</h4>
-                        <span class="item-date">Unlocked ${new Date(item.unlocked_at).toLocaleDateString()}</span>
+            // Section 2: Unlocked Content Library
+            if (content.length > 0) {
+                html += `<div>
+                    <h3 style="font-size:1.1rem;color:#1e293b;margin:0 0 12px 0;">📚 Your Learning Library (${content.length})</h3>
+                    <div class="library-grid">`;
+                html += content.map(item => `
+                    <div class="library-item-card" data-content-id="${item.content_id}">
+                        <div class="item-icon">${item.content_id.includes('recap') ? '📖' : '🎮'}</div>
+                        <div class="item-info">
+                            <h4 class="item-name">${item.content_id.replace(/_/g, ' ').replace(/(\d+)/g, ' $1').trim().toUpperCase()}</h4>
+                            <span class="item-date">Unlocked ${new Date(item.unlocked_at).toLocaleDateString()}</span>
+                        </div>
+                        <button class="play-btn" onclick="App.playTreasure('${item.content_id}')">Play</button>
                     </div>
-                    <button class="play-btn" onclick="App.playTreasure('${item.content_id}')">Play</button>
-                </div>
-            `).join('');
+                `).join('');
+                html += `</div></div>`;
+            }
+            
+            if (chests.length === 0 && content.length === 0) {
+                html = '<div class="empty-state" style="text-align:center;padding:40px;color:#94a3b8;">🎁 Your treasure box is empty.<br><small>Complete quests and view study recaps to fill it up!</small></div>';
+            }
+            
+            grid.innerHTML = html;
             
         } catch (err) {
             console.error('Error loading treasure box:', err);
             grid.innerHTML = '<div class="error">Failed to open treasure box</div>';
         }
     },
+
+    async openChest(chestId, btnEl) {
+        if (btnEl) { btnEl.disabled = true; btnEl.textContent = 'Opening...'; }
+        try {
+            const response = await fetch('/api/gamification/chest/open', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId: this.currentUser, chestId })
+            });
+            const result = await response.json();
+            
+            if (result.success) {
+                // Show rewards summary
+                const rewards = result.rewards || [];
+                const rewardText = rewards.map(r => {
+                    if (r.type === 'coins') return `🪙 ${r.amount} Coins`;
+                    if (r.type === 'gems') return `💎 ${r.amount} Gems`;
+                    return `📖 ${r.value || 'Content'}`;
+                }).join(', ') || 'Nothing this time...';
+                
+                // Brief flash notification
+                const notif = document.createElement('div');
+                notif.style.cssText = 'position:fixed;bottom:20px;right:20px;background:#1e293b;color:white;padding:16px 24px;border-radius:12px;z-index:9999;font-weight:600;box-shadow:0 10px 30px rgba(0,0,0,0.3);';
+                notif.innerHTML = `🎁 Chest opened!<br><small style="color:#94a3b8;">${rewardText}</small>`;
+                document.body.appendChild(notif);
+                setTimeout(() => notif.remove(), 4000);
+                
+                // Refresh the treasure box view
+                await this.loadTreasureBox();
+                await this.loadUserData(); // Refresh coins/gems totals
+            }
+        } catch (err) {
+            console.error('Error opening chest:', err);
+            if (btnEl) { btnEl.disabled = false; btnEl.textContent = 'Open!'; }
+        }
+    },
+
 
     async playTreasure(contentId) {
         console.log('Playing treasure item:', contentId);

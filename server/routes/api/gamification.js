@@ -183,4 +183,49 @@ router.get('/library/:userId', async (req, res) => {
     }
 });
 
+// Unlock a piece of content into the Treasure Box (called when study/recap is viewed)
+router.post('/library/unlock', async (req, res) => {
+    const { userId, contentId } = req.body;
+    if (!userId || !contentId) return res.status(400).json({ error: 'userId and contentId required' });
+    try {
+        await pool.query(
+            `INSERT INTO unlocked_content (user_id, content_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+            [userId, contentId]
+        );
+        console.log(`📚 Treasure Box: saved ${contentId} for ${userId}`);
+        res.json({ success: true });
+    } catch (err) {
+        console.error('Error unlocking content:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Get user's pending (unopened) chests
+router.get('/chests/:userId', async (req, res) => {
+    const { userId } = req.params;
+    try {
+        const result = await pool.query(
+            `SELECT id, chest_type, created_at FROM user_chests WHERE user_id = $1 AND opened = false ORDER BY created_at ASC`,
+            [userId]
+        );
+        res.json(result.rows);
+    } catch (err) {
+        console.error('Error getting chests:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Open a chest
+router.post('/chest/open', async (req, res) => {
+    const { userId, chestId } = req.body;
+    if (!userId || !chestId) return res.status(400).json({ error: 'userId and chestId required' });
+    try {
+        const result = await chestService.openChest(userId, chestId);
+        res.json(result);
+    } catch (err) {
+        console.error('Error opening chest:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
 module.exports = router;

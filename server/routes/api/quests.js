@@ -142,10 +142,11 @@ router.post('/complete', async (req, res) => {
         else if (mastery >= 70) stars = 2;
         else if (mastery >= 50) stars = 1;
 
-        let gemsAwarded = stars;
-        if (gemsAwarded > 0) {
+        let gemsAwarded = 0;
+        if (stars === 3) {
+            gemsAwarded = 1; // Only 3-star mastery earns the rare Gem
             await gamificationService.initializeUser(userId);
-            await gamificationService.awardGems(userId, 'general', 0, gemsAwarded, 'quest_complete');
+            await gamificationService.awardGems(userId, 'general', 0, 1, 'quest_3star_complete');
         }
 
         let chestAwarded = null;

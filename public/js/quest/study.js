@@ -134,6 +134,15 @@ const QuestStudy = {
         continueBtn.onclick = () => {
             console.log('✅ Continue button clicked - resuming questions');
             
+            // Save this recap/simulation to the Treasure Box
+            const userId = window.App?.currentUser || 'student-001';
+            const contentId = studySim?.id || studySim?.simulation_id || `sim_${Date.now()}`;
+            fetch('/api/gamification/library/unlock', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId, contentId: String(contentId) })
+            }).catch(() => {}); // Fire and forget — don't block study flow
+            
             // Track study sim view
             context.answers.push({ 
                 questionId: studySim.id, 

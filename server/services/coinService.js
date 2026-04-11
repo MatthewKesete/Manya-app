@@ -34,12 +34,12 @@ class CoinService {
         return result.rows[0]?.coin_balance || 0;
     }
     
-    // Update coins based on answer
+    // Update coins based on answer (10 correct, 5 with hint, -10 wrong)
     async updateCoins(userId, isCorrect, hintUsed) {
         let coinChange = 0;
         
         if (isCorrect) {
-            coinChange = hintUsed ? 20 : 30; // Legacy method if not using awardCoinsOnCorrectAnswer
+            coinChange = hintUsed ? 5 : 10;
         } else {
             coinChange = -10;
         }
