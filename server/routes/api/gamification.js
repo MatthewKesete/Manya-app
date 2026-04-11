@@ -1,6 +1,7 @@
 // server/routes/api/gamification.js
 const express = require('express');
 const router = express.Router();
+const pool = require('../../config/database');
 const gamificationService = require('../../services/gamificationService');
 const chestService = require('../../services/chestService');
 const achievementService = require('../../services/achievementService');

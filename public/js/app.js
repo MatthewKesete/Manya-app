@@ -205,7 +205,8 @@ async loadUserData() {
         
         try {
             const response = await fetch(`/api/gamification/achievements/${this.currentUser}`);
-            const achievements = await response.json();
+            const data = await response.json();
+            const achievements = Array.isArray(data) ? data : [];
             
             if (achievements.length === 0) {
                 grid.innerHTML = '<div class="empty-state">No badges yet. Complete challenges and milestones to earn them!</div>';
@@ -239,7 +240,8 @@ async loadUserData() {
         
         try {
             const response = await fetch(`/api/gamification/library/${this.currentUser}`);
-            const content = await response.json();
+            const data = await response.json();
+            const content = Array.isArray(data) ? data : [];
             
             if (content.length === 0) {
                 grid.innerHTML = '<div class="empty-state">Your treasure box is empty. Open chests to find recaps, simulations, and more!</div>';
